@@ -40,9 +40,10 @@ check()
 //RooRealVar rooB0_mass("B0_mass","B0_mass",5.28,5.27,5.3); //5.28,5.22,5.34
 RooRealVar rooKPi_mass("KPi_mass","KPi_mass",1.0,0.6,2.2);//0.89,0.5,3.0
 //RooRealVar rooJpsi_mass("Jpsi_mass","Jpsi_mass",3.09,2.97,3.21); //3.0,2.0,4.0
+RooRealVar rooJpsiPi_mass("JpsiPi_mass","JpsiPi_mass",4.0,0.6,6.0); //3.0,2.0,4.0
 //RooRealVar rooB0_3mom("B0_3mom","B0_3mom",10.0,10.0,10.0); //24.0,10.0,30.0
 //cout <<rooB0_3mom->getVal();
-RooRealVar rooTheta_Kstar("Theta_Kstar","Theta_Kstar",0.5*TMath::Pi(),0.0,TMath::Pi()); //0.0,3.15
+//RooRealVar rooTheta_Kstar("Theta_Kstar","Theta_Kstar",0.5*TMath::Pi(),0.0,TMath::Pi()); //0.0,3.15
 RooRealVar rooTheta_Jpsi("Theta_Jpsi","Theta_Jpsi",0.5*TMath::Pi(),0.0,TMath::Pi()); //0.0,3.15
 RooRealVar rooPhi("Phi","Phi",0.25,-TMath::Pi(),TMath::Pi()); //-3.15,3.15
 
@@ -70,13 +71,15 @@ RooRealVar rooPhase_0_K892("rooPhase_0_K892","rooPhase_0_K0_800",0.0,-3.15,3.15)
 //RooGenericPdf g("g","sqrt(abs(alpha*x))+0.1",RooArgSet(x,alpha)) ;
 //RooMyPdf g("g","compiled class g",x,alpha) ;
 //RooMyPdf g("g","compiled class g",rooB0_mass,rooKPi_mass,rooJpsi_mass,rooB0_3mom,rooTheta_Kstar,rooPhi,rooTheta_Jpsi) ;
-RooMyPdf g("g","compiled class g",rooKPi_mass,rooTheta_Kstar,rooPhi,rooTheta_Jpsi) ;
+//RooMyPdf g("g","compiled class g",rooKPi_mass,rooTheta_Kstar,rooPhi,rooTheta_Jpsi) ;
+RooMyPdf g("g","compiled class g",rooKPi_mass,rooJpsiPi_mass,rooPhi,rooTheta_Jpsi) ;
 
 //cout << "PDF val :" << g.getVal() << endl;
 //return;
 
 //RooDataSet* data = g.generate(RooArgSet(rooKPi_mass,rooTheta_Kstar,rooPhi,rooTheta_Jpsi),2000) ;
 RooPlot* frame = rooKPi_mass.frame() ;
+RooPlot* frame2 = rooJpsiPi_mass.frame() ;
 //TFile* f_data = new TFile ("pdf_gen.root");
 
 //data->plotOn(frame);
@@ -85,6 +88,10 @@ RooPlot* frame = rooKPi_mass.frame() ;
 //alpha=1e-4 ;
 g.plotOn(frame,LineColor(kRed)) ;
 frame->Draw() ;
+
+g.plotOn(frame2,LineColor(kBlue)) ;
+frame2->Draw() ;
+
 
 //TFile f("pdf_gen.root","RECREATE") ;
 //data->Write();

@@ -70,9 +70,9 @@ public:
 //	      RooAbsReal& _alpha);
 //        RooAbsReal& _rooB0_mass,
         RooAbsReal& _rooKPi_mass,
-//        RooAbsReal& _rooJpsi_mass,
+        RooAbsReal& _rooJpsiPi_mass,
 //        RooAbsReal& _rooB0_3mom,
-        RooAbsReal& _rooTheta_Kstar,
+//        RooAbsReal& _rooTheta_Kstar,
         RooAbsReal& _rooPhi,
         RooAbsReal& _rooTheta_Jpsi
 //        RooAbsReal& _rooPhi
@@ -110,8 +110,8 @@ double PHSP(double mKPicalc) const;
 
 //================ Signal Density Calculation ========
 //double get_signal_density (double mBcalc, double mKPicalc, double mJpsicalc, double pB, double theta_k, double phi, double theta_jpsi ) const;
-double get_signal_density (double mKPicalc, double theta_k, double phi, double theta_jpsi ) const;
-
+//double get_signal_density (double mKPicalc, double theta_k, double phi, double theta_jpsi ) const;
+double get_signal_density (double mKPicalc, double mJpsiPicalc , double phi, double theta_jpsi ) const;
 protected:
 
 //  RooRealProxy x ;
@@ -119,9 +119,9 @@ protected:
   
 //        RooRealProxy rooB0_mass;
         RooRealProxy rooKPi_mass;
-//        RooRealProxy rooJpsi_mass;
+        RooRealProxy rooJpsiPi_mass;
 //        RooRealProxy rooB0_3mom;
-        RooRealProxy rooTheta_Kstar;
+//        RooRealProxy rooTheta_Kstar;
         RooRealProxy rooPhi;
         RooRealProxy rooTheta_Jpsi;
     

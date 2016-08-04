@@ -26,9 +26,10 @@ ClassImp(RooMyPdf)
 //                        RooAbsReal& _alpha
 //        RooAbsReal& _rooB0_mass,
         RooAbsReal& _rooKPi_mass,
+        RooAbsReal& _rooJpsiPi_mass,
 //        RooAbsReal& _rooJpsi_mass,
 //        RooAbsReal& _rooB0_3mom,
-        RooAbsReal& _rooTheta_Kstar,
+//        RooAbsReal& _rooTheta_Kstar,
         RooAbsReal& _rooPhi,
         RooAbsReal& _rooTheta_Jpsi
 //        RooAbsReal& _rooPhi
@@ -39,9 +40,10 @@ ClassImp(RooMyPdf)
 
 //        rooB0_mass("rooB0_mass","rooB0_mass",this,_rooB0_mass),
         rooKPi_mass("rooKPi_mass","rooKPi_mass",this,_rooKPi_mass),
+        rooJpsiPi_mass("rooJpsiPi_mass","rooJpsiPi_mass",this,_rooJpsiPi_mass),
 //        rooJpsi_mass("rooJpsi_mass","rooJpsi_mass",this,_rooJpsi_mass),
 //        rooB0_3mom("rooB0_3mom","rooB0_3mom",this,_rooB0_3mom),
-        rooTheta_Kstar("rooTheta_Kstar","rooTheta_Kstar",this,_rooTheta_Kstar),
+//        rooTheta_Kstar("rooTheta_Kstar","rooTheta_Kstar",this,_rooTheta_Kstar),
         rooPhi("rooPhi","rooPhi",this,_rooPhi),
         rooTheta_Jpsi("rooTheta_Jpsi","rooTheta_Jpsi",this,_rooTheta_Jpsi)
 //        rooPhi("rooPhi","rooPhi",this,_rooPhi)
@@ -56,9 +58,10 @@ ClassImp(RooMyPdf)
 //   alpha("alpha",this,other.alpha)
 //        rooB0_mass("rooB0_mass",this,other.rooB0_mass),
         rooKPi_mass("rooKPi_mass",this,other.rooKPi_mass),
+        rooJpsiPi_mass("rooJpsiPi_mass",this,other.rooJpsiPi_mass),
 //        rooJpsi_mass("rooJpsi_mass",this,other.rooJpsi_mass),
 //        rooB0_3mom("rooB0_3mom",this,other.rooB0_3mom),
-        rooTheta_Kstar("rooTheta_Kstar",this,other.rooTheta_Kstar),
+//        rooTheta_Kstar("rooTheta_Kstar",this,other.rooTheta_Kstar),
         rooPhi("rooPhi",this,other.rooPhi),
         rooTheta_Jpsi("rooTheta_Jpsi",this,other.rooTheta_Jpsi)
 //        rooPhi("rooPhi",this,other.rooPhi)
@@ -76,7 +79,8 @@ ClassImp(RooMyPdf)
 //   return RooMyPdf::get_signal_density(rooB0_mass,rooKPi_mass,rooJpsi_mass,rooB0_3mom,rooTheta_Kstar,rooPhi,rooTheta_Jpsi);
    if ( (rooKPi_mass < mK+mPi) || (rooKPi_mass > (mB - mJpsi) ) ) { return 0.0; }
    else
-   { return RooMyPdf::get_signal_density(rooKPi_mass,rooTheta_Kstar,rooPhi,rooTheta_Jpsi); }
+//   { return RooMyPdf::get_signal_density(rooKPi_mass,rooTheta_Kstar,rooPhi,rooTheta_Jpsi); }
+   { return RooMyPdf::get_signal_density(rooKPi_mass,rooJpsiPi_mass,rooPhi,rooTheta_Jpsi); }
 
  }
 
@@ -239,17 +243,19 @@ double RooMyPdf::wigner_d (int j, int m1, int m2, double theta ) const
 //================ phase space =======================
 double RooMyPdf::PHSP(double mKPicalc) const
 {
-    return dec2mm(mB,mKPicalc,mJpsi) * dec2mm(mKPicalc,mK,mPi) ;
+//    return dec2mm(mB,mKPicalc,mJpsi) * dec2mm(mKPicalc,mK,mPi) ;
+    return dec2mm(mB,mKPicalc,mJpsicalc) * dec2mm(mKPicalc,mK,mPi) ;
 }
 //================ phase space =======================
 
 //================ Signal Density Calculation ========
 //pB = B0 3-momentum
 //double RooMyPdf::get_signal_density (double mBcalc, double mKPicalc, double mJpsicalc, double pB, double theta_k, double phi, double theta_jpsi ) const
-double RooMyPdf::get_signal_density (double mKPicalc, double theta_k, double phi, double theta_jpsi ) const
+//double RooMyPdf::get_signal_density (double mKPicalc, double theta_k, double phi, double theta_jpsi ) const
+double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double phi, double theta_jpsi ) const
 { // signal density begin
 
-    double q = dec2mm(mB,mKPicalc,mJpsi); //dec2mm(mBcalc,mKPicalc,mJpsicalc);
+    double q = dec2mm(mB,mKPicalc,mJpsi); 
 //    double qB = pB/mB;
     double qB  = q/mB;
     double qB2 = qB*qB;
