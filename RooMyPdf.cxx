@@ -77,7 +77,7 @@ ClassImp(RooMyPdf)
    // ENTER EXPRESSION IN TERMS OF VARIABLE ARGUMENTS HERE 
 //   return sqrt(abs(x*alpha))+0.1 ;
 //   return RooMyPdf::get_signal_density(rooB0_mass,rooKPi_mass,rooJpsi_mass,rooB0_3mom,rooTheta_Kstar,rooPhi,rooTheta_Jpsi);
-   if ( (rooKPi_mass < mK+mPi) || (rooKPi_mass > (mB - mJpsi) ) ) { return 0.0; }
+   if ( (rooKPi_mass < mK+mPi) || (rooKPi_mass > (mB - mJpsi) ) || (rooJpsiPi_mass < mJpsi+mPi) || (rooJpsiPi_mass > (mB - mK) ) ) { return 0.0; }
    else
 //   { return RooMyPdf::get_signal_density(rooKPi_mass,rooTheta_Kstar,rooPhi,rooTheta_Jpsi); }
    { return RooMyPdf::get_signal_density(rooKPi_mass,rooJpsiPi_mass,rooPhi,rooTheta_Jpsi); }
@@ -97,7 +97,12 @@ double RooMyPdf::sq_calc(double x,double y, double z) const
 double RooMyPdf::dec2mm (double m0, double m1, double m2) const
 {
     double temp = sq_calc(m0*m0,m1*m1,m2*m2);
+    if (temp >= 0) {
     return sqrt(temp)/(2.0*m0);
+    }
+    else {
+    return 0.0;
+    }
 }
 //================ Decay Momentum ====================
 
@@ -128,7 +133,10 @@ double RooMyPdf::bwff(int l, double q, double q0, double r) const
     if (l == 3) {
         f = sqrt((z0*z0*z0+6.0*z0*z0+45.0*z0+225.0)/(z*z*z+6.0*z*z+45.0*z+225.0));
     }
-    
+    //########### spin 4 ###############
+    if (l == 4) {
+        f = sqrt((z0*z0*z0*z0+10.0*z0*z0*z0+135.0*z0*z0+1575.0*z0+11025.0)/(z*z*z*z+10.0*z*z*z+135.0*z*z+1575.0*z+11025.0)); // from evtgen code
+    }    
     return f;
 }
 //================ Blatt-Weisskopf Form Factors ======
@@ -243,10 +251,25 @@ double RooMyPdf::wigner_d (int j, int m1, int m2, double theta ) const
 //================ phase space =======================
 double RooMyPdf::PHSP(double mKPicalc) const
 {
-//    return dec2mm(mB,mKPicalc,mJpsi) * dec2mm(mKPicalc,mK,mPi) ;
-    return dec2mm(mB,mKPicalc,mJpsicalc) * dec2mm(mKPicalc,mK,mPi) ;
+    return dec2mm(mB,mKPicalc,mJpsi) * dec2mm(mKPicalc,mK,mPi) ;
 }
 //================ phase space =======================
+
+//================ costheta_k ===========================
+double RooMyPdf::costhetaK(double mKPicalc, double mJpsiPicalc) const
+{
+    double m2KPi = mKPicalc*mKPicalc;
+    double m2JpsiPi = mJpsiPicalc*mJpsiPicalc;
+
+    double num = 0.5*(m2KPi)*(m2B+m2K-m2JpsiPi) - 0.25*(m2B-m2Jpsi+m2KPi) * (m2KPi-m2Pi+m2K);
+    double denom2 = ( 0.25*( pow((m2B-m2Jpsi+m2KPi),2) ) - (m2KPi*m2B) ) * ( 0.25*( pow((m2KPi-m2Pi+m2K),2) ) - (m2KPi*m2K) );
+    double denom = sqrt(denom2);  
+
+    double costheta_k = num/denom;
+//    return TMath::ACos(costheta_k);
+    return costheta_k;
+}
+//================ costheta_k ===========================
 
 //================ Signal Density Calculation ========
 //pB = B0 3-momentum
@@ -254,6 +277,14 @@ double RooMyPdf::PHSP(double mKPicalc) const
 //double RooMyPdf::get_signal_density (double mKPicalc, double theta_k, double phi, double theta_jpsi ) const
 double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double phi, double theta_jpsi ) const
 { // signal density begin
+
+    if (fabs(costhetaK(mKPicalc,mJpsiPicalc))>1 ) { 
+	return 0.0;
+	}
+
+    else { // cos theta K* physical
+//    cout << "cos theta K* : " << costhetaK(mKPicalc,mJpsiPicalc) << endl;
+    double theta_k = TMath::ACos(costhetaK(mKPicalc,mJpsiPicalc));
 
     double q = dec2mm(mB,mKPicalc,mJpsi); 
 //    double qB = pB/mB;
@@ -350,6 +381,13 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
     complex<double> a_K4_2045 = bwamp(mK4_2045,wK4_2045,mKPicalc,4,fK4_2045,qK4_2045,qK);
     a_K4_2045 = a_K4_2045 * qB3 * bwff(3,q,q4_2045,rB);
     
+    //############## K5*(2380) ###################
+    double q5_2380 = dec2mm(mB,mK5_2380,mJpsi);
+    double qK5_2380 = dec2mm(mK5_2380,mK,mPi);
+    double fK5_2380 = bwff(4,qK,qK5_2380,rR);
+    complex<double> a_K5_2380 = bwamp(mK5_2380,wK5_2380,mKPicalc,4,fK5_2380,qK5_2380,qK);
+    a_K5_2380 = a_K5_2380 * qB4 * bwff(4,q,q5_2380,rB);
+
 
 //******************** lepton pair helicity minus 1**************
     complex<double> index_minus1_m1(0.0,-1*phi);
@@ -362,6 +400,9 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
 //    cout << "exp * wigner for k_1410, -1,-1 : " << exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi) << endl;
 //    cout << "  " << endl;
     complex<double> a_K2_1430_minus1_m1 = a_K2_1430*wigner_d(2,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+    complex<double> a_K3_1780_minus1_m1 = a_K3_1780*wigner_d(3,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+    complex<double> a_K4_2045_minus1_m1 = a_K4_2045*wigner_d(4,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+    complex<double> a_K5_2380_minus1_m1 = a_K5_2380*wigner_d(5,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
 //    cout << "wigner1, wigner2 for k2_1430, -1,-1 : " << wigner_d(2,-1,0,theta_k)<< "  " << wigner_d(1,-1,-1,theta_jpsi) << endl;
 //    cout << "exp * wigner for k2_1430, -1,-1 : " << exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi) << endl;
 //    cout << "  " << endl;
@@ -380,6 +421,9 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
 //    cout << "exp * wigner for k_1410, 0,-1 : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl;
 //    cout << "  " << endl;
     complex<double> a_K2_1430_zero_m1 = a_K2_1430*wigner_d(2,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    complex<double> a_K3_1780_zero_m1 = a_K3_1780*wigner_d(3,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    complex<double> a_K4_2045_zero_m1 = a_K4_2045*wigner_d(4,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    complex<double> a_K5_2380_zero_m1 = a_K5_2380*wigner_d(5,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
 //    cout << "wigner1, wigner2 for k2_1430, 0,-1 : " << wigner_d(2,0,0,theta_k)<< "  " << wigner_d(1,0,-1,theta_jpsi) << endl;
 //    cout << "exp * wigner for k2_1430, 0,-1 : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl;
 //    cout << "  " << endl;
@@ -411,6 +455,9 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
     
     complex<double> a_K_1410_plus1_m1 = a_K_1410*wigner_d(1,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
     complex<double> a_K2_1430_plus1_m1 = a_K2_1430*wigner_d(2,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    complex<double> a_K3_1780_plus1_m1 = a_K3_1780*wigner_d(3,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    complex<double> a_K4_2045_plus1_m1 = a_K4_2045*wigner_d(4,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    complex<double> a_K5_2380_plus1_m1 = a_K5_2380*wigner_d(5,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
 //    cout << "wigner1, wigner2 for k2_1430, 1,-1 : " << wigner_d(2,1,0,theta_k)<< "  " << wigner_d(1,1,-1,theta_jpsi) << endl;
 //    cout << "exp * wigner for k2_1430, 1,-1 : " << exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi) << endl;
 //    cout << "Leo's value : " << -7.4994e-17 * complex<double>(0.484456,-0.123702)<< endl;
@@ -426,6 +473,9 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
 //    cout << " " << endl;
     complex<double> a_K_1410_minus1_p1 = a_K_1410*wigner_d(1,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
     complex<double> a_K2_1430_minus1_p1 = a_K2_1430*wigner_d(2,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    complex<double> a_K3_1780_minus1_p1 = a_K3_1780*wigner_d(3,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    complex<double> a_K4_2045_minus1_p1 = a_K4_2045*wigner_d(4,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    complex<double> a_K5_2380_minus1_p1 = a_K5_2380*wigner_d(5,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
     complex<double> a_K_1680_minus1_p1 = a_K_1680*wigner_d(1,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
     
     complex<double> index_zero_p1(0.0,0.0);
@@ -437,6 +487,9 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
 
     complex<double> a_K_1410_zero_p1 = a_K_1410*wigner_d(1,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
     complex<double> a_K2_1430_zero_p1 = a_K2_1430*wigner_d(2,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    complex<double> a_K3_1780_zero_p1 = a_K3_1780*wigner_d(3,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    complex<double> a_K4_2045_zero_p1 = a_K4_2045*wigner_d(4,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    complex<double> a_K5_2380_zero_p1 = a_K5_2380*wigner_d(5,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
     complex<double> a_K_1680_zero_p1 = a_K_1680*wigner_d(1,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
     
     complex<double> a_K0_800_p1 = a_K0_800*wigner_d(0,0,0,theta_k)*wigner_d(1,0,1,theta_jpsi);
@@ -456,6 +509,9 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
 
     complex<double> a_K_1410_plus1_p1 = a_K_1410*wigner_d(1,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
     complex<double> a_K2_1430_plus1_p1 = a_K2_1430*wigner_d(2,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    complex<double> a_K3_1780_plus1_p1 = a_K3_1780*wigner_d(3,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    complex<double> a_K4_2045_plus1_p1 = a_K4_2045*wigner_d(4,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    complex<double> a_K5_2380_plus1_p1 = a_K5_2380*wigner_d(5,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
     complex<double> a_K_1680_plus1_p1 = a_K_1680*wigner_d(1,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
     
 //******************* helicity phase ***************************
@@ -522,24 +578,37 @@ complex<double> hm1K4_2045(103*TMath::Cos(-1.03),103*TMath::Sin(-1.03));
     
     double val_m1 = pow(abs(
     
-                        a_K_892_minus1_m1 * hm1K892
-                        +a_K_892_zero_m1 * h0K892
-                        +a_K_892_plus1_m1 * hp1K892
+                        //a_K_892_minus1_m1 * hm1K892
+                        //+a_K_892_zero_m1 * h0K892
+                        //+a_K_892_plus1_m1 * hp1K892
                         
-                        +a_K_1410_minus1_m1 * hm1K1410
-                        +a_K_1410_zero_m1 * h0K1410
-                        +a_K_1410_plus1_m1 * hp1K1410
+                        //+a_K_1410_minus1_m1 * hm1K1410
+                        //+a_K_1410_zero_m1 * h0K1410
+                        //+a_K_1410_plus1_m1 * hp1K1410
                         
-                        +a_K2_1430_minus1_m1 * hm1K2_1430
-                        +a_K2_1430_zero_m1 * h0K2_1430
-                        +a_K2_1430_plus1_m1 * hp1K2_1430
+                        a_K2_1430_minus1_m1 //* hm1K2_1430
+                        +a_K2_1430_zero_m1 //* h0K2_1430
+                        +a_K2_1430_plus1_m1 //* hp1K2_1430
+
+//                        a_K3_1780_minus1_m1 //* hm1K3_1780
+//                        +a_K3_1780_zero_m1 //* h0K3_1780
+//                        +a_K3_1780_plus1_m1 //* hp1K3_1780
+
+//                        a_K4_2045_minus1_m1 //* hm1K4_2045
+//                        +a_K4_2045_zero_m1 //* h0K4_2045
+//                        +a_K4_2045_plus1_m1 //* hp1K4_2045
+
+//                        a_K5_2380_minus1_m1 //* hm1K5_2380
+//                        +a_K5_2380_zero_m1 //* h0K5_2380
+//                        +a_K5_2380_plus1_m1 //* hp1K5_2380
+
      
                         //+a_K_1680_minus1_m1 * hm1K1680
                         //+a_K_1680_zero_m1 * h0K1680
                         //+a_K_1680_plus1_m1 * hp1K1680
                         
-                        +a_K0_800_m1 * hK0_800
-                        +a_K0_1430_m1 * hK0_1430
+                        //+a_K0_800_m1 * hK0_800
+                        //+a_K0_1430_m1 * hK0_1430
                         ), 2);
 // cout << " a_K_892_minus1_m1 * hm1K892 : " << a_K_892_minus1_m1 * hm1K892 << endl;
 // cout << " a_K_892_zero_m1 * h0K892 : " << a_K_892_zero_m1 * h0K892 << endl;
@@ -554,24 +623,36 @@ complex<double> hm1K4_2045(103*TMath::Cos(-1.03),103*TMath::Sin(-1.03));
 
     double val_p1 = pow(abs(
     
-                        a_K_892_minus1_p1 * hm1K892
-                        +a_K_892_zero_p1 * h0K892
-                        +a_K_892_plus1_p1 * hp1K892
+                        //a_K_892_minus1_p1 * hm1K892
+                        //+a_K_892_zero_p1 * h0K892
+                        //+a_K_892_plus1_p1 * hp1K892
                         
-                        +a_K_1410_minus1_p1 * hm1K1410
-                        +a_K_1410_zero_p1 * h0K1410
-                        +a_K_1410_plus1_p1 * hp1K1410
+                        //+a_K_1410_minus1_p1 * hm1K1410
+                        //+a_K_1410_zero_p1 * h0K1410
+                        //+a_K_1410_plus1_p1 * hp1K1410
                         
-                        +a_K2_1430_minus1_p1 * hm1K2_1430
-                        +a_K2_1430_zero_p1 * h0K2_1430
-                        +a_K2_1430_plus1_p1 * hp1K2_1430
+                        a_K2_1430_minus1_p1 //* hm1K2_1430
+                        +a_K2_1430_zero_p1 //* h0K2_1430
+                        +a_K2_1430_plus1_p1 //* hp1K2_1430
+
+//                        a_K3_1780_minus1_p1 //* hm1K3_1780
+//                        +a_K3_1780_zero_p1 //* h0K3_1780
+//                        +a_K3_1780_plus1_p1 //* hp1K3_1780
+
+//                        a_K4_2045_minus1_p1 //* hm1K4_2045
+//                        +a_K4_2045_zero_p1 //* h0K4_2045
+//                        +a_K4_2045_plus1_p1 //* hp1K4_2045
+
+//                        a_K5_2380_minus1_p1 //* hm1K5_2380
+//                        +a_K5_2380_zero_p1 //* h0K5_2380
+//                        +a_K5_2380_plus1_p1 //* hp1K5_2380
     
                         //+a_K_1680_minus1_p1 * hm1K1680
                         //+a_K_1680_zero_p1 * h0K1680
                         //+a_K_1680_plus1_p1 * hp1K1680
      
-                        +a_K0_800_p1 * hK0_800
-                        +a_K0_1430_p1 * hK0_1430
+                        //+a_K0_800_p1 * hK0_800
+                        //+a_K0_1430_p1 * hK0_1430
                         ), 2);
 
 // cout << " a_K_892_minus1_p1 * hm1K892 : " << a_K_892_minus1_m1 * hm1K892 << endl;
@@ -680,8 +761,11 @@ complex<double> hm1K4_2045(103*TMath::Cos(-1.03),103*TMath::Sin(-1.03));
 //    return temp_m1;
 
 //cout << "PHSP : " << PHSP(mKPicalc) << endl;
-    return (val_m1+val_p1) * PHSP(mKPicalc) ;
+//    return (val_m1+val_p1) * PHSP(mKPicalc) ;
+//      return ( pow(abs(a_K2_1430),2) ) * PHSP(mKPicalc);
+      return (k2_1430_m1 + k2_1430_p1) * PHSP(mKPicalc);
 
+} // cos theta K* physical
 
 //================ Amplitudes for the different K resonances===========
 

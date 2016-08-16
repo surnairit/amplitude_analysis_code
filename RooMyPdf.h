@@ -27,6 +27,12 @@ const double mK = 0.493677;     // [GeV] Kaon mass
 const double mPi = 0.13957;     // [GeV] Pion mass
 const double mJpsi = 3.096916;    // [GeV] Jpsi mass
 
+const double m2B = mB*mB;        // [GeV]^2 B0 mass squared
+const double m2K = mK*mK;     // [GeV]^2 Kaon mass squared
+const double m2Pi = mPi*mPi;     // [GeV]^2 Pion mass squared
+const double m2Jpsi = mJpsi*mJpsi;    // [GeV]^2 Jpsi mass squared
+
+
 const double rB = 3.00; //5.0;          // [GeV^-1] meson radial parameter for B
 const double rR = 3.00; //1.5;          // [GeV^-1] meson radial parameter for intermediate resonances
 
@@ -60,6 +66,9 @@ const double wK2_1980 = 0.373;  // [GeV^-1] K2(1980) width - neutral only -> see
 const double mK4_2045 = 2.045;  // [GeV^-1] K4(2045) mass
 const double wK4_2045 = 0.198;   // [GeV^-1] K4(2045) width
 
+const double mK5_2380 = 2.382; // [GeV^-1] K5(2380) mass  // off shell
+const double wK5_2380 = 0.178; // [GeV^-1] K5(2380) width // off shell
+ 
 
  
 class RooMyPdf : public RooAbsPdf {
@@ -107,6 +116,9 @@ double wigner_d (int j, int m1, int m2, double theta ) const;
 
 //================ phase space =======================
 double PHSP(double mKPicalc) const;
+
+//================ costheta_k ===========================
+double costhetaK(double mKPicalc, double mJpsiPicalc) const;
 
 //================ Signal Density Calculation ========
 //double get_signal_density (double mBcalc, double mKPicalc, double mJpsicalc, double pB, double theta_k, double phi, double theta_jpsi ) const;
