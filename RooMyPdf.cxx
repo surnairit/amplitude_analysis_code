@@ -275,6 +275,9 @@ double RooMyPdf::costhetaHel(double m2Mom, double m2Dau, double m2GDau, double m
 //double RooMyPdf::get_signal_density (double mKPicalc, double theta_k, double phi, double theta_jpsi ) const
 double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double phi, double theta_jpsi ) const
 { // signal density begin
+
+    double m2KPi = mKPicalc*mKPicalc;
+    double m2JpsiPi = mJpsiPicalc*mJpsiPicalc;
     
     if (fabs(costhetaHel(m2B,m2KPi,m2K,m2Pi,m2Jpsi,m2JpsiPi))>1 ) {
         return 0.0;
@@ -282,8 +285,6 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
     
     else { // cos theta K* physical
         //    cout << "cos theta K* : " << costhetaK(mKPicalc,mJpsiPicalc) << endl;
-        double m2KPi = mKPicalc*mKPicalc;
-        double m2JpsiPi = mJpsiPicalc*mJpsiPicalc;
         double theta_k = TMath::ACos(costhetaHel(m2B,m2KPi,m2K,m2Pi,m2Jpsi,m2JpsiPi));
         
 //        cout<< costhetaK(mKPicalc,mJpsiPicalc)-costhetaHel(m2B,m2KPi,m2K,m2Pi,m2Jpsi,m2JpsiPi) <<endl;

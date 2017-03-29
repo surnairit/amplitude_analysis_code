@@ -126,7 +126,7 @@ public:
     double PHSP(double mKPicalc) const;
     
     //================ costheta_k ===========================
-    double costhetaK(double mKPicalc, double mJpsiPicalc) const;
+//    double costhetaK(double mKPicalc, double mJpsiPicalc) const;
     
     //================ costheta_helicity ===========================
     double costhetaHel(double m2Mom, double m2Dau, double m2GDau, double m2GDau2, double m2Dau2, double m2Dau2GDau2) const;
