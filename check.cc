@@ -87,7 +87,7 @@ RooMyPdf g("g","compiled class g",rooKPi_mass,rooJpsiPi_mass,rooPhi,rooTheta_Jps
 //return;
 
 //RooDataSet* data = g.generate(RooArgSet(rooKPi_mass,rooTheta_Kstar,rooPhi,rooTheta_Jpsi),2000) ;
-RooDataSet* data = g.generate(RooArgSet(rooKPi_mass,rooJpsiPi_mass,rooPhi,rooTheta_Jpsi),5000) ; //60000
+RooDataSet* data = g.generate(RooArgSet(rooKPi_mass,rooJpsiPi_mass,rooPhi,rooTheta_Jpsi),100) ; //60000
 
   RooRealVar* var;
   RooRealVar* var2;
@@ -141,7 +141,7 @@ TGraph *cont_down = new TGraph(n,x,m23_max); cont_down->SetLineWidth(3);
     cont_up->Draw("lsame");
     cDal->SaveAs("gen_dalitz.pdf");
 
-
+/*
 RooPlot* frame = rooKPi_mass.frame() ;
 data->plotOn(frame);
 g.plotOn(frame,LineColor(kRed)) ;
@@ -157,6 +157,8 @@ TCanvas* c2 = new TCanvas("c2","c2",800,600);
 c2->cd();
 frame2->Draw() ;
 c2->SaveAs("gen_jpsipi.pdf");
+*/
+
 
 
 //TFile* f_data = new TFile ("pdf_gen.root");
