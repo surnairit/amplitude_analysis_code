@@ -21,11 +21,13 @@
 
 #include <math.h>
 #include "TMath.h"
+#include <TLorentzVector.h>
 
 const double mB = 5.27961;        // [GeV] B0 mass
 const double mK = 0.493677;     // [GeV] Kaon mass
 const double mPi = 0.13957;     // [GeV] Pion mass
 const double mJpsi = 3.096916;    // [GeV] Jpsi mass
+const double muon_mass = 0.1056583715; //[GeV] Muon Mass
 
 const double m2B = mB*mB;        // [GeV]^2 B0 mass squared
 const double m2K = mK*mK;     // [GeV]^2 Kaon mass squared
@@ -131,6 +133,15 @@ public:
     //================ costheta_helicity ===========================
     double costhetaHel(double m2Mom, double m2Dau, double m2GDau, double m2GDau2, double m2Dau2, double m2Dau2GDau2) const;
     
+    //================ Alpha =============================
+    double alpha(double theta, double phi, double m2kpi, double m2jpsipi) const;
+    
+    //================ theta tilde =======================
+    double costhetatilde(double theta, double phi, double m2kpi, double m2jpsipi) const;
+    
+    //================ phi tilde =======================
+    double phitilde(double theta, double phi, double m2kpi, double m2jpsipi) const;
+
     
     //================ Signal Density Calculation ========
     //double get_signal_density (double mBcalc, double mKPicalc, double mJpsicalc, double pB, double theta_k, double phi, double theta_jpsi ) const;

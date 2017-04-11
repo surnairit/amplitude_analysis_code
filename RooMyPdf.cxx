@@ -13,6 +13,7 @@
 #include "RooAbsCategory.h"
 #include <math.h>
 #include "TMath.h"
+#include <TLorentzVector.h>
 
 #include <iostream>
 #include <cmath>
@@ -265,9 +266,239 @@ double RooMyPdf::costhetaHel(double m2Mom, double m2Dau, double m2GDau, double m
     
     double costheta_helicity = num/denom;
     return costheta_helicity;
-
+    
 }
 //================ costheta_helicity ===========================
+
+
+//================ Alpha =============================
+double RooMyPdf::alpha(double theta, double phi, double m2kpi, double m2jpsipi) const
+{
+    double kmom = dec2mm(sqrt(m2kpi),mK,mPi);
+    double costh_k = costhetaHel(m2B,m2kpi,m2K,m2Pi,m2Jpsi,m2jpsipi);
+    
+    TLorentzVector K;
+    double pkx = kmom*sin(acos(costh_k));
+    double pky = 0.0;
+    double pkz = kmom*costh_k;
+    double Ek = sqrt(m2K+kmom*kmom);
+    K.SetPxPyPzE(pkx,pky,pkz,Ek);
+    TLorentzVector Pi;
+    double ppix = -kmom*sin(acos(costh_k));
+    double ppiy = 0.0;
+    double ppiz = -kmom*costh_k;
+    double Epi = sqrt(m2Pi+kmom*kmom);
+    Pi.SetPxPyPzE(ppix,ppiy,ppiz,Epi);
+    
+    // Jpsi mom = K* mom in B0 rest frame
+    double jpsimom = dec2mm(mB,mJpsi,sqrt(m2kpi));
+    TLorentzVector J_b0;
+    J_b0.SetPxPyPzE(0.0,0.0,-jpsimom,sqrt(m2Jpsi+jpsimom*jpsimom));
+    TLorentzVector Kstar_b0;
+    Kstar_b0.SetPxPyPzE(0.0,0.0,jpsimom,sqrt(m2kpi+jpsimom*jpsimom));
+    
+    // boosting K* to Jpsi rest frame
+    TLorentzVector Kstar_jpsi = Kstar_b0;
+    Kstar_jpsi.Boost( -J_b0.BoostVector() );
+    
+    // boosting Jpsi to K* rest frame
+    TLorentzVector J_Kstar = J_b0;
+    J_Kstar.Boost( -Kstar_b0.BoostVector() );
+    
+    // boosting Pi in K* rest frame to Jpsi rest frame
+    TLorentzVector Pi_jpsi = Pi;
+    Pi_jpsi.Boost( -J_Kstar.BoostVector() );
+    
+    // Muon 4 momenta in Jpsi rest frame
+    double mumom = dec2mm(mJpsi,muon_mass,muon_mass);
+    TLorentzVector muP;
+    double pmuPx = mumom*sin(theta)*cos(phi);
+    double pmuPy = -mumom*sin(theta)*sin(phi);
+    double pmuPz = -mumom*cos(theta);
+    double EmuP = sqrt(muon_mass*muon_mass+mumom*mumom);
+    muP.SetPxPyPzE(pmuPx,pmuPy,pmuPz,EmuP);
+    
+    
+    /*
+     double scale1 = ((Kstar_jpsi.Vect()).Dot(muP.Vect()))/(muP.Vect().Mag2());
+     TVector3 aKstar = Kstar_jpsi.Vect() - scale1*muP.Vect();
+     
+     double scale2 = ((Pi_jpsi.Vect()).Dot(muP.Vect()))/(muP.Vect().Mag2());
+     TVector3 aPi = Pi_jpsi.Vect() - scale2*muP.Vect();
+     
+     double cosalpha = (aPi.Dot(aKstar))/((aPi.Mag())*(aKstar.Mag()));
+     
+     return acos(cosalpha);
+     */
+    
+    TVector3	MuPPiPlane	=	muP.Vect().Cross(Pi_jpsi.Vect()); //muP.Vect().Cross(Pi_jpsi.Vect());
+    TVector3	MuPKstPlane		=	muP.Vect().Cross(Kstar_jpsi.Vect()); //muP.Vect().Cross(Kstar_jpsi.Vect());
+    double alph;
+    if	(	MuPPiPlane.Cross(MuPKstPlane).Dot(-J_b0.Vect())	>	0.0	)
+        alph	=	MuPPiPlane.Angle(MuPKstPlane);
+    else
+        alph	=	-MuPPiPlane.Angle(MuPKstPlane);
+    
+    return alph;
+    
+    
+}
+//================ Alpha =============================
+
+
+
+//================ Theta tilde =======================
+double RooMyPdf::costhetatilde(double theta, double phi, double m2kpi, double m2jpsipi) const
+{
+    // K momentum in B0 frame
+    double pk_B0 = dec2mm(mB,sqrt(m2jpsipi),mK);
+    TLorentzVector K_B0;
+    K_B0.SetPxPyPzE(0.0,0.0,pk_B0,sqrt(m2K+pk_B0*pk_B0));
+    
+    TLorentzVector Zc_B0;
+    Zc_B0.SetPxPyPzE(0.0,0.0,-pk_B0,sqrt(m2jpsipi+pk_B0*pk_B0));
+    
+    // Boost K to Zc rest frame
+    TLorentzVector K_Zc_old = K_B0;
+    K_Zc_old.Boost( -Zc_B0.BoostVector() );
+    
+    // 4 momenta in Zc rest frame (with a different coordinate system)
+    double thetaz = acos(  costhetaHel(m2B,m2jpsipi,m2Jpsi,m2Pi,m2K,m2kpi)  );
+    double pk = K_Zc_old.Pz();
+    double Ek = sqrt(m2K+pk*pk);
+    TLorentzVector K_Zc;
+    K_Zc.SetPxPyPzE(pk*sin(thetaz),0.0,pk*cos(thetaz),Ek);
+    
+    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,mPi);
+    
+    double Epi = sqrt(m2Pi+ppi*ppi);
+    TLorentzVector Pi_Zc;
+    Pi_Zc.SetPxPyPzE(0.0,0.0,ppi,Epi);
+    
+    double Epsi = sqrt(m2Jpsi+ppi*ppi);
+    TLorentzVector Jpsi_Zc;
+    Jpsi_Zc.SetPxPyPzE(0.0,0.0,-ppi,Epsi);
+    
+    // Boost everything to Jpsi frame
+    TLorentzVector K_jpsi = K_Zc;
+    K_jpsi.Boost( -Jpsi_Zc.BoostVector() );
+    
+    TLorentzVector Pi_jpsi = Pi_Zc;
+    Pi_jpsi.Boost( -Jpsi_Zc.BoostVector() );
+    
+    // Muon momenta in Jpsi rest frame
+    double pmu = dec2mm(m2Jpsi,muon_mass,muon_mass);
+    double Emu = sqrt(muon_mass*muon_mass + pmu*pmu);
+    
+    double denom = sqrt( (0.25*pow((m2B-m2kpi+m2Jpsi),2)-m2B*m2Jpsi)*(0.25*m2Jpsi*m2Jpsi-muon_mass*muon_mass*m2Jpsi) );
+    double m2kpimu = 0.5*( m2B+m2kpi+2.0*muon_mass*muon_mass-m2Jpsi-4.0*TMath::Cos(theta)*denom/m2Jpsi );
+    
+    double Ek_jpsi = K_jpsi.E();
+    double pkx = K_jpsi.Px();
+    double pkz = K_jpsi.Pz();
+    
+    double Epi_jpsi = Pi_jpsi.E();
+    double ppiz = Pi_jpsi.Pz();
+    
+    double a = pow((Ek_jpsi+Emu+Epi_jpsi),2) - m2kpimu - (pkx*pkx + pkz*pkz +2.0*pkz*ppiz + pmu*pmu + ppiz*ppiz );
+    double b = 2.0*pmu*(pkz+ppiz);
+    double c = 2.0*pkx*pmu*cos(phi);
+    
+//    cout << "denom :" << denom << endl;
+//    cout << "b :" << m2kpimu << endl;
+//    cout << "c :" << (pkx*pkx + pkz*pkz +2.0*pkz*ppiz + pmu*pmu + ppiz*ppiz ) << endl;
+    
+        if ( (b*b+c*c-a*a)>=0.0 ) {
+           return ( a*b + sqrt(c*c*(b*b+c*c-a*a)) )/(b*b+c*c);
+//           cout<< ( a*b + sqrt(c*c*(b*b+c*c-a*a)) )/(b*b+c*c) << endl;
+    //return c;
+        }
+        else {return 10.0;}
+    
+}
+//================ Theta tilde =======================
+
+
+//================ phi tilde =======================
+double RooMyPdf::phitilde(double theta, double phi, double m2kpi, double m2jpsipi) const
+{
+    // K momentum in B0 frame
+    double pk_B0 = dec2mm(mB,sqrt(m2jpsipi),mK);
+    TLorentzVector K_B0;
+    K_B0.SetPxPyPzE(0.0,0.0,pk_B0,sqrt(m2K+pk_B0*pk_B0));
+    
+    TLorentzVector Zc_B0;
+    Zc_B0.SetPxPyPzE(0.0,0.0,-pk_B0,sqrt(m2jpsipi+pk_B0*pk_B0));
+    
+    // Boost K to Zc rest frame
+    TLorentzVector K_Zc_old = K_B0;
+    K_Zc_old.Boost( -Zc_B0.BoostVector() );
+    
+    // 4 momenta in Zc rest frame (with a different coordinate system)
+    double thetaz = acos(  costhetaHel(m2B,m2jpsipi,m2Jpsi,m2Pi,m2K,m2kpi)  );
+    double pk = K_Zc_old.Pz();
+    double Ek = sqrt(m2K+pk*pk);
+    TLorentzVector K_Zc;
+    K_Zc.SetPxPyPzE(pk*sin(thetaz),0.0,pk*cos(thetaz),Ek);
+    
+    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,mPi);
+    
+    double Epi = sqrt(m2Pi+ppi*ppi);
+    TLorentzVector Pi_Zc;
+    Pi_Zc.SetPxPyPzE(0.0,0.0,ppi,Epi);
+    
+    double Epsi = sqrt(m2Jpsi+ppi*ppi);
+    TLorentzVector Jpsi_Zc;
+    Jpsi_Zc.SetPxPyPzE(0.0,0.0,-ppi,Epsi);
+    
+    // Boost everything to Jpsi frame
+    TLorentzVector K_jpsi = K_Zc;
+    K_jpsi.Boost( -Jpsi_Zc.BoostVector() );
+    
+    TLorentzVector Pi_jpsi = Pi_Zc;
+    Pi_jpsi.Boost( -Jpsi_Zc.BoostVector() );
+    
+    // Muon momenta in Jpsi rest frame
+    double pmu = dec2mm(m2Jpsi,muon_mass,muon_mass);
+    double Emu = sqrt(muon_mass*muon_mass + pmu*pmu);
+    
+    double denom = sqrt( (0.25*pow((m2B-m2kpi+m2Jpsi),2)-m2B*m2Jpsi)*(0.25*m2Jpsi*m2Jpsi-muon_mass*muon_mass*m2Jpsi) );
+    double m2kpimu = 0.5*( m2B+m2kpi+2.0*muon_mass*muon_mass-m2Jpsi-4.0*cos(theta)*denom/m2Jpsi );
+    
+    double Ek_jpsi = K_jpsi.E();
+    double pkx = K_jpsi.Px();
+    double pkz = K_jpsi.Pz();
+    
+    double Epi_jpsi = Pi_jpsi.E();
+    double ppiz = Pi_jpsi.Pz();
+    
+    double a = pow((Ek_jpsi+Emu+Epi_jpsi),2) - m2kpimu - (pkx*pkx + pkz*pkz +2.0*pkz*ppiz + pmu*pmu + ppiz*ppiz );
+    double b = 2.0*pmu*(pkz+ppiz);
+    double c = 2.0*pkx*pmu*cos(phi);
+    
+    if ( (b*b+c*c-a*a)>=0.0 ) { // discriminant check
+        double costhtilde = ( a*b + sqrt(c*c*(b*b+c*c-a*a)) )/(b*b+c*c);
+        double sinthtilde = ( a*c*c - b * sqrt(c*c*(b*b+c*c-a*a)) )/(b*b*b+c*c*c);
+        
+        TLorentzVector muP;
+        muP.SetPxPyPzE( pmu*sinthtilde*cos(phi), -pmu*sinthtilde*sin(phi), -pmu*costhtilde, Emu );
+        
+        TVector3	MuPPiPlane	=	muP.Vect().Cross(Pi_jpsi.Vect());
+        TVector3	KPiPlane	=	K_jpsi.Vect().Cross(Pi_jpsi.Vect());
+        double phtld;
+        if	(	MuPPiPlane.Cross(KPiPlane).Dot(Pi_jpsi.Vect())	>	0.0	)
+            phtld	=	MuPPiPlane.Angle(KPiPlane);
+        else
+            phtld	=	-MuPPiPlane.Angle(KPiPlane);
+        
+        return phtld;
+        
+    } // discriminant check
+    else {return 10.0;}
+}
+//================ phi tilde =======================
+
+
 
 //================ Signal Density Calculation ========
 //pB = B0 3-momentum
@@ -275,503 +506,597 @@ double RooMyPdf::costhetaHel(double m2Mom, double m2Dau, double m2GDau, double m
 //double RooMyPdf::get_signal_density (double mKPicalc, double theta_k, double phi, double theta_jpsi ) const
 double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double phi, double theta_jpsi ) const
 { // signal density begin
-
+    
     double m2KPi = mKPicalc*mKPicalc;
     double m2JpsiPi = mJpsiPicalc*mJpsiPicalc;
+    
+    double theta_k = 0;
+    double theta_z = 0;
     
     if (fabs(costhetaHel(m2B,m2KPi,m2K,m2Pi,m2Jpsi,m2JpsiPi))>1 ) {
         return 0.0;
     }
-    
     else { // cos theta K* physical
         //    cout << "cos theta K* : " << costhetaK(mKPicalc,mJpsiPicalc) << endl;
-        double theta_k = TMath::ACos(costhetaHel(m2B,m2KPi,m2K,m2Pi,m2Jpsi,m2JpsiPi));
-        
-//        cout<< costhetaK(mKPicalc,mJpsiPicalc)-costhetaHel(m2B,m2KPi,m2K,m2Pi,m2Jpsi,m2JpsiPi) <<endl;
-        
-        double q = dec2mm(mB,mKPicalc,mJpsi);
-        //    double qB = pB/mB;
-        double qB  = q/mB;
-        double qB2 = qB*qB;
-        double qB3 = qB2*qB;
-        double qB4 = qB3*qB;
-        double qB5 = qB4*qB;
-        //================ Amplitudes for the different K resonances===========
-        // mKPi = K-Pi inv mass calculated from data
-        double qK = dec2mm(mKPicalc,mK,mPi);
-        
-        //############## K0*(800) ###################
-        double q0_800 = dec2mm(mB,mK0_800,mJpsi);
-        double qK0_800 = dec2mm(mK0_800,mK,mPi);
-        double fK0_800 = bwff(0,qK,qK0_800,rR);
-        //    complex<double> a_K0_800 = bwamp(mK0_800,wK0_800,mKPicalc,mK,mPi,0,fK0_800,qK0_800,qK);
-        complex<double> a_K0_800 = bwamp(mK0_800,wK0_800,mKPicalc,0,fK0_800,qK0_800,qK);
-        a_K0_800 = a_K0_800  *  qB * bwff(1,q,q0_800,rB); //
-        //    cout<< "a_K0_800 pure bw with ff : " << a_K0_800 << endl;
-        //    cout << "  " << endl ;
-        
-        //############## K*(892) ###################
-        double qK892 = dec2mm(mK892,mK,mPi);
-        double fK892 = bwff(1,qK,qK892,rR);
-        //    complex<double> a_K_892 = bwamp(mK892,wK892,mKPicalc,mK,mPi,1,fK892,qK892,qK);
-        complex<double> a_K_892 = bwamp(mK892,wK892,mKPicalc,1,fK892,qK892,qK);
-        //    cout<< "a_K_892 pure bw with ff : " << a_K_892 << endl;
-        //    cout << "  " << endl ;
-        
-        //############## K*(1410) ###################
-        double qK1410 = dec2mm(mK1410,mK,mPi);
-        double fK1410 = bwff(1,qK,qK1410,rR);
-        //    complex<double> a_K_1410 = bwamp(mK1410,wK1410,mKPicalc,mK,mPi,1,fK1410,qK1410,qK);
-        complex<double> a_K_1410 = bwamp(mK1410,wK1410,mKPicalc,1,fK1410,qK1410,qK);
-        //    cout<< "a_K_1410 pure bw with ff : " << a_K_1410 << endl;
-        //    cout << "  " << endl ;
-        
-        //############## K0*(1430) ###################
-        double q0_1430 = dec2mm(mB,mK0_1430,mJpsi);
-        double qK0_1430 = dec2mm(mK0_1430,mK,mPi);
-        double fK0_1430 = bwff(0,qK,qK0_1430,rR); // check spin
-        //    complex<double> a_K0_1430 = bwamp(mK0_1430,wK0_1430,mKPicalc,mK,mPi,0,fK0_1430,qK0_1430,qK);
-        complex<double> a_K0_1430 = bwamp(mK0_1430,wK0_1430,mKPicalc,0,fK0_1430,qK0_1430,qK);
-        a_K0_1430 = a_K0_1430 * qB * bwff(1,q,q0_1430,rB);
-        //    cout<< "a_K0_1430 pure bw with ff : " << a_K0_1430 << endl;
-        //    cout << "  " << endl ;
-        
-        //############## K2*(1430) ###################
-        double q2_1430 = dec2mm(mB,mK2_1430,mJpsi);
-        double qK2_1430 = dec2mm(mK2_1430,mK,mPi);
-        double fK2_1430 = bwff(2,qK,qK2_1430,rR);
-        //    complex<double> a_K2_1430 = bwamp(mK2_1430,wK2_1430,mKPicalc,mK,mPi,2,fK2_1430,qK2_1430,qK);
-        complex<double> a_K2_1430 = bwamp(mK2_1430,wK2_1430,mKPicalc,2,fK2_1430,qK2_1430,qK);
-        a_K2_1430 = a_K2_1430 * qB * bwff(1,q,q2_1430,rB);
-        //    cout<< "a_K2_1430 pure bw with ff : " << a_K2_1430 << endl;
-        //    cout << "  " << endl ;
-        
-        //############## K*(1680) ###################
-        double qK1680 = dec2mm(mK1680,mK,mPi);
-        double fK1680 = bwff(1,qK,qK1680,rR);
-        //    complex<double> a_K_1680 = bwamp(mK1680,wK1680,mKPicalc,mK,mPi,1,fK1680,qK1680,qK);
-        complex<double> a_K_1680 = bwamp(mK1680,wK1680,mKPicalc,1,fK1680,qK1680,qK);
-        
-        //############## K3*(1780) ###################
-        double q3_1780 = dec2mm(mB,mK3_1780,mJpsi);
-        double qK3_1780 = dec2mm(mK3_1780,mK,mPi);
-        double fK3_1780 = bwff(3,qK,qK3_1780,rR);
-        //    complex<double> a_K3_1780 = bwamp(mK3_1780,wK3_1780,mKPicalc,mK,mPi,3,fK3_1780,qK3_1780,qK);
-        complex<double> a_K3_1780 = bwamp(mK3_1780,wK3_1780,mKPicalc,3,fK3_1780,qK3_1780,qK);
-        a_K3_1780 = a_K3_1780 * qB2 * bwff(2,q,q3_1780,rB);
-        
-        //############## K0*(1950) ###################
-        double q0_1950 = dec2mm(mB,mK0_1950,mJpsi);
-        double qK0_1950 = dec2mm(mK0_1950,mK,mPi);
-        double fK0_1950 = bwff(0,qK,qK0_1950,rR); // check spin
-        //    complex<double> a_K0_1950 = bwamp(mK0_1950,wK0_1950,mKPicalc,mK,mPi,0,fK0_1950,qK0_1950,qK);
-        complex<double> a_K0_1950 = bwamp(mK0_1950,wK0_1950,mKPicalc,0,fK0_1950,qK0_1950,qK);
-        a_K0_1950 = a_K0_1950 * qB * bwff(1,q,q0_1950,rB);
-        
-        //############## K2*(1980) ###################
-        double q2_1980 = dec2mm(mB,mK2_1980,mJpsi);
-        double qK2_1980 = dec2mm(mK2_1980,mK,mPi);
-        double fK2_1980 = bwff(2,qK,qK2_1980,rR);
-        //    complex<double> a_K2_1980 = bwamp(mK2_1980,wK2_1980,mKPicalc,mK,mPi,2,fK2_1980,qK2_1980,qK);
-        complex<double> a_K2_1980 = bwamp(mK2_1980,wK2_1980,mKPicalc,2,fK2_1980,qK2_1980,qK);
-        a_K2_1980 = a_K2_1980 * qB * bwff(1,q,q2_1980,rB);
-        
-        //############## K4*(2045) ###################
-        double q4_2045 = dec2mm(mB,mK4_2045,mJpsi);
-        double qK4_2045 = dec2mm(mK4_2045,mK,mPi);
-        double fK4_2045 = bwff(4,qK,qK4_2045,rR);
-        //    complex<double> a_K4_2045 = bwamp(mK4_2045,wK4_2045,mKPicalc,mK,mPi,4,fK4_2045,qK4_2045,qK);
-        complex<double> a_K4_2045 = bwamp(mK4_2045,wK4_2045,mKPicalc,4,fK4_2045,qK4_2045,qK);
-        a_K4_2045 = a_K4_2045 * qB3 * bwff(3,q,q4_2045,rB);
-        
-        //############## K5*(2380) ###################
-        double q5_2380 = dec2mm(mB,mK5_2380,mJpsi);
-        double qK5_2380 = dec2mm(mK5_2380,mK,mPi);
-        double fK5_2380 = bwff(4,qK,qK5_2380,rR);
-        complex<double> a_K5_2380 = bwamp(mK5_2380,wK5_2380,mKPicalc,4,fK5_2380,qK5_2380,qK);
-        a_K5_2380 = a_K5_2380 * qB4 * bwff(4,q,q5_2380,rB);
-        
-        
-        //******************** lepton pair helicity minus 1**************
-        complex<double> index_minus1_m1(0.0,-1*phi);
-        complex<double> a_K_892_minus1_m1 = a_K_892*wigner_d(1,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_892, -1,-1 : " << wigner_d(1,-1,0,theta_k)<< "  " << wigner_d(1,-1,-1,theta_jpsi) << endl;
-        //    cout << " exp * wigner for k_892, -1,-1 : " << exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi) << endl;
-        //    cout << "  " << endl;
-        complex<double> a_K_1410_minus1_m1 = a_K_1410*wigner_d(1,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_1410, -1,-1 : " << wigner_d(1,-1,0,theta_k)<< "  " << wigner_d(1,-1,-1,theta_jpsi) << endl;
-        //    cout << "exp * wigner for k_1410, -1,-1 : " << exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi) << endl;
-        //    cout << "  " << endl;
-        complex<double> a_K2_1430_minus1_m1 = a_K2_1430*wigner_d(2,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
-        complex<double> a_K3_1780_minus1_m1 = a_K3_1780*wigner_d(3,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
-        complex<double> a_K4_2045_minus1_m1 = a_K4_2045*wigner_d(4,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
-        complex<double> a_K5_2380_minus1_m1 = a_K5_2380*wigner_d(5,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k2_1430, -1,-1 : " << wigner_d(2,-1,0,theta_k)<< "  " << wigner_d(1,-1,-1,theta_jpsi) << endl;
-        //    cout << "exp * wigner for k2_1430, -1,-1 : " << exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi) << endl;
-        //    cout << "  " << endl;
-        complex<double> a_K_1680_minus1_m1 = a_K_1680*wigner_d(1,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
-        
-        complex<double> index_zero_m1(0.0,0.0);
-        //    cout << "K892 wigner_thetaK* : " << wigner_d(1,0,0,theta_k) << " exp(0) x wigner_thetaPsi  : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl ;
-        complex<double> a_K_892_zero_m1 = a_K_892*wigner_d(1,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_892, 0,-1 : " << wigner_d(1,0,0,theta_k)<< "  " << wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << "exp * wigner for k_892, -1,-1 : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << "a_K_892_zero_m1 : " << a_K_892_zero_m1 << endl ;
-        //    cout << "  " << endl;
-        
-        complex<double> a_K_1410_zero_m1 = a_K_1410*wigner_d(1,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_1410, 0,-1 : " << wigner_d(1,0,0,theta_k)<< "  " << wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << "exp * wigner for k_1410, 0,-1 : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << "  " << endl;
-        complex<double> a_K2_1430_zero_m1 = a_K2_1430*wigner_d(2,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
-        complex<double> a_K3_1780_zero_m1 = a_K3_1780*wigner_d(3,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
-        complex<double> a_K4_2045_zero_m1 = a_K4_2045*wigner_d(4,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
-        complex<double> a_K5_2380_zero_m1 = a_K5_2380*wigner_d(5,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k2_1430, 0,-1 : " << wigner_d(2,0,0,theta_k)<< "  " << wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << "exp * wigner for k2_1430, 0,-1 : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << "  " << endl;
-        
-        complex<double> a_K_1680_zero_m1 = a_K_1680*wigner_d(1,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
-        
-        complex<double> a_K0_800_m1 = a_K0_800*wigner_d(0,0,0,theta_k)*wigner_d(1,0,-1,theta_jpsi);
-        complex<double> a_K0_1430_m1 = a_K0_1430*wigner_d(0,0,0,theta_k)*wigner_d(1,0,-1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_800, 0,-1 : " << wigner_d(0,0,0,theta_k)<< " " <<wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << " a_K0_800_m1 : " << a_K0_800_m1 << endl;
-        //    cout << " " << endl ;
-        //    cout << "wigner1, wigner2 for k0_1430, 0,-1 : " << wigner_d(0,0,0,theta_k)<< " " <<wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << " a_K0_1430_m1 : " << a_K0_1430_m1 << endl;
-        //    cout << " " << endl ;
-        
-        
-        //    cout << "wigner1, wigner2 for k800 : " << wigner_d(0,0,0,theta_k)<< "  " << wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << "wigner * wigner for k800 : " << wigner_d(0,0,0,theta_k) * wigner_d(1,0,-1,theta_jpsi) << endl;
-        //    cout << "  " << endl;
-        //    cout << "angle : " << theta_jpsi << endl;
-        
-        complex<double> index_plus1_m1(0.0,phi);
-        //    cout << "K892 wigner_thetaK* : " << wigner_d(1,1,0,theta_k) << " exp(iphi) x wigner_thetaPsi  : " << exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi) << endl ;
-        complex<double> a_K_892_plus1_m1 = a_K_892*wigner_d(1,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_892, 1,-1 : " << wigner_d(1,1,0,theta_k)<< "  " << wigner_d(1,1,-1,theta_jpsi) << endl;
-        //    cout << "exp * wigner for k_892, 1,-1 : " << exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi) << endl;
-        //    cout << "a_K_892_plus1_m1 : " << a_K_892_plus1_m1 << endl ;
-        //    cout << "  " << endl;
-        
-        complex<double> a_K_1410_plus1_m1 = a_K_1410*wigner_d(1,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
-        complex<double> a_K2_1430_plus1_m1 = a_K2_1430*wigner_d(2,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
-        complex<double> a_K3_1780_plus1_m1 = a_K3_1780*wigner_d(3,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
-        complex<double> a_K4_2045_plus1_m1 = a_K4_2045*wigner_d(4,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
-        complex<double> a_K5_2380_plus1_m1 = a_K5_2380*wigner_d(5,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k2_1430, 1,-1 : " << wigner_d(2,1,0,theta_k)<< "  " << wigner_d(1,1,-1,theta_jpsi) << endl;
-        //    cout << "exp * wigner for k2_1430, 1,-1 : " << exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi) << endl;
-        //    cout << "Leo's value : " << -7.4994e-17 * complex<double>(0.484456,-0.123702)<< endl;
-        //    cout << "  " << endl;
-        complex<double> a_K_1680_plus1_m1 = a_K_1680*wigner_d(1,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
-        
-        //******************** lepton pair helicity plus 1**************
-        complex<double> index_minus1_p1(0.0,-1*phi);
-        complex<double> a_K_892_minus1_p1 = a_K_892*wigner_d(1,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_892, -1,1 : " << wigner_d(1,-1,0,theta_k)<< "  " << wigner_d(1,-1,1,theta_jpsi) << endl;
-        //    cout << " exp * wigner for k_892, -1,1 : " << exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi) << endl;
-        //    cout << " a_K_892_minus1_p1 : " << a_K_892_minus1_p1 << endl;
-        //    cout << " " << endl;
-        complex<double> a_K_1410_minus1_p1 = a_K_1410*wigner_d(1,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
-        complex<double> a_K2_1430_minus1_p1 = a_K2_1430*wigner_d(2,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
-        complex<double> a_K3_1780_minus1_p1 = a_K3_1780*wigner_d(3,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
-        complex<double> a_K4_2045_minus1_p1 = a_K4_2045*wigner_d(4,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
-        complex<double> a_K5_2380_minus1_p1 = a_K5_2380*wigner_d(5,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
-        complex<double> a_K_1680_minus1_p1 = a_K_1680*wigner_d(1,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
-        
-        complex<double> index_zero_p1(0.0,0.0);
-        complex<double> a_K_892_zero_p1 = a_K_892*wigner_d(1,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_892, 0,1 : " << wigner_d(1,0,0,theta_k)<< "  " << wigner_d(1,0,1,theta_jpsi) << endl;
-        //    cout << "exp * wigner for k_892, 0,1 : " << exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi) << endl;
-        //    cout << " a_K_892_zero_p1 : " << a_K_892_zero_p1 << endl;
-        //    cout << "  " << endl;
-        
-        complex<double> a_K_1410_zero_p1 = a_K_1410*wigner_d(1,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
-        complex<double> a_K2_1430_zero_p1 = a_K2_1430*wigner_d(2,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
-        complex<double> a_K3_1780_zero_p1 = a_K3_1780*wigner_d(3,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
-        complex<double> a_K4_2045_zero_p1 = a_K4_2045*wigner_d(4,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
-        complex<double> a_K5_2380_zero_p1 = a_K5_2380*wigner_d(5,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
-        complex<double> a_K_1680_zero_p1 = a_K_1680*wigner_d(1,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
-        
-        complex<double> a_K0_800_p1 = a_K0_800*wigner_d(0,0,0,theta_k)*wigner_d(1,0,1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_800, 0,1 : " << wigner_d(0,0,0,theta_k)<< " " <<wigner_d(1,0,1,theta_jpsi) << endl;
-        //    cout << " a_K0_800_p1 : " << a_K0_800_p1 << endl;
-        complex<double> a_K0_1430_p1 = a_K0_1430*wigner_d(0,0,0,theta_k)*wigner_d(1,0,1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k0_1430, 0,1 : " << wigner_d(0,0,0,theta_k)<< " " <<wigner_d(1,0,1,theta_jpsi) << endl;
-        //    cout << " a_K0_1430_p1 : " << a_K0_1430_p1 << endl;
-        //    cout << " " << endl ;
-        
-        complex<double> index_plus1_p1(0.0,phi);
-        complex<double> a_K_892_plus1_p1 = a_K_892*wigner_d(1,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
-        //    cout << "wigner1, wigner2 for k_892, 1,1 : " << wigner_d(1,1,0,theta_k)<< "  " << wigner_d(1,1,1,theta_jpsi) << endl;
-        //    cout << "exp * wigner for k_892, 1,1 : " << exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi) << endl;
-        //    cout << " a_K_892_plus1_p1 : " << a_K_892_plus1_p1 << endl;
-        //    cout << "  " << endl;
-        
-        complex<double> a_K_1410_plus1_p1 = a_K_1410*wigner_d(1,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
-        complex<double> a_K2_1430_plus1_p1 = a_K2_1430*wigner_d(2,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
-        complex<double> a_K3_1780_plus1_p1 = a_K3_1780*wigner_d(3,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
-        complex<double> a_K4_2045_plus1_p1 = a_K4_2045*wigner_d(4,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
-        complex<double> a_K5_2380_plus1_p1 = a_K5_2380*wigner_d(5,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
-        complex<double> a_K_1680_plus1_p1 = a_K_1680*wigner_d(1,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
-        
-        //******************* helicity phase ***************************
-        
-        complex<double> hK0_800(1.12*TMath::Cos(2.3),1.12*TMath::Sin(2.3));
-        //cout << "hK0_800 : " << hK0_800 << endl;
-        //cout << "  " << endl;
-        
-        complex<double> h0K892(1*TMath::Cos(0),1*TMath::Sin(0));
-        complex<double> hp1K892(0.844*TMath::Cos(3.14),0.844*TMath::Sin(3.14));
-        complex<double> hm1K892(0.196*TMath::Cos(-1.7),0.196*TMath::Sin(-1.7));
-        
-        //cout << "h0K892 : " << h0K892 << endl;
-        //cout << "hp1K892 : " << hp1K892 << endl;
-        //cout << "hm1K892 : " << hm1K892 << endl;
-        //cout << "  " << endl;
-        
-        complex<double> h0K1410(0.119*TMath::Cos(0.81),0.119*TMath::Sin(0.81));
-        complex<double> hp1K1410(0.123*TMath::Cos(-1.04),0.123*TMath::Sin(-1.04));
-        complex<double> hm1K1410(0.036*TMath::Cos(0.67),0.036*TMath::Sin(0.67));
-        
-        complex<double> hK0_1430(0.89*TMath::Cos(-2.17),0.89*TMath::Sin(-2.17));
-        //cout << "hK0_1430 : " << hK0_1430 << endl;
-        //cout << "  " << endl;
-        
-        complex<double> h0K2_1430(4.66*TMath::Cos(-0.32),4.66*TMath::Sin(-0.32));
-        complex<double> hp1K2_1430(4.65*TMath::Cos(-3.05),4.65*TMath::Sin(-3.05));
-        complex<double> hm1K2_1430(1.26*TMath::Cos(-1.92),1.26*TMath::Sin(-1.92));
-        
-        complex<double> h0K1680(0.139*TMath::Cos(-2.46),0.139*TMath::Sin(-2.46));
-        complex<double> hp1K1680(0.082*TMath::Cos(-2.85),0.082*TMath::Sin(-2.85));
-        complex<double> hm1K1680(0.161*TMath::Cos(1.88),0.161*TMath::Sin(1.88));
-        
-        complex<double> h0K3_1780(16.8*TMath::Cos(-1.43),16.8*TMath::Sin(-1.43));
-        complex<double> hp1K3_1780(19.1*TMath::Cos(2.03),19.1*TMath::Sin(2.03));
-        complex<double> hm1K3_1780(10.2*TMath::Cos(1.55),10.2*TMath::Sin(1.55));
-        
-        complex<double> hK0_1950(0.241*TMath::Cos(-2.39),0.241*TMath::Sin(-2.39));
-        
-        complex<double> h0K2_1980(4.53*TMath::Cos(-0.26),4.53*TMath::Sin(-0.26));
-        complex<double> hp1K2_1980(3.78*TMath::Cos(3.08),3.78*TMath::Sin(3.08));
-        complex<double> hm1K2_1980(3.51*TMath::Cos(2.63),3.51*TMath::Sin(2.63));
-        
-        complex<double> h0K4_2045(590*TMath::Cos(-2.66),590*TMath::Sin(-2.66));
-        complex<double> hp1K4_2045(676*TMath::Cos(0.06),676*TMath::Sin(0.06));
-        complex<double> hm1K4_2045(103*TMath::Cos(-1.03),103*TMath::Sin(-1.03));
-        
-        
-        //    double val = pow(abs(//a_K_892_minus1_m1 //* exp(helphase_index_K_892_minus1)
-        //+a_K_892_zero_m1   //* exp(helphase_index_K_892_zero)
-        //+a_K_892_plus1_m1  //* exp(helphase_index_K_892_plus1)
-        //                        hK0_800*a_K0_800 + hK892*a_K_892 + hK1410*a_K_1410 + hK0_1430*a_K0_1430 + hK2_1430*a_K2_1430
-        //                        + hK1680*a_K_1680 + hK3_1780*a_K3_1780 + hK0_1950*a_K0_1950 + hK2_1980*a_K2_1980 + hK4_2045*a_K4_2045
-        //a_K0_800 + a_K_892 + a_K_1410 + a_K0_1430 + a_K2_1430 + a_K_1680 + a_K3_1780 + a_K0_1950 + a_K2_1980 + a_K4_2045
-        //+a_K0_800
-        //                        a_K0_1430_m1
-        //a_K0_1430
-        //+a_K_892_minus1_p1 //* exp(helphase_index_K_892_minus1)
-        //+a_K_892_zero_p1   //* exp(helphase_index_K_892_zero)
-        //+a_K_892_plus1_p1
-        
-        //+ a_K0_1430_p1
-        //                        ), 2); //* exp(helphase_index_K_892_plus1)),2);
-        
-        double val_m1 = pow(abs(
-                                
-                                a_K_892_minus1_m1 * hm1K892
-                                +a_K_892_zero_m1 * h0K892
-                                +a_K_892_plus1_m1 * hp1K892
-                                
-                                +a_K_1410_minus1_m1 * hm1K1410
-                                +a_K_1410_zero_m1 * h0K1410
-                                +a_K_1410_plus1_m1 * hp1K1410
-                                
-                                +a_K2_1430_minus1_m1 * hm1K2_1430
-                                +a_K2_1430_zero_m1 * h0K2_1430
-                                +a_K2_1430_plus1_m1 * hp1K2_1430
-                                
-                                //+a_K3_1780_minus1_m1 //* hm1K3_1780
-                                //+a_K3_1780_zero_m1 //* h0K3_1780
-                                //+a_K3_1780_plus1_m1 //* hp1K3_1780
-                                
-                                //+a_K4_2045_minus1_m1 //* hm1K4_2045
-                                //+a_K4_2045_zero_m1 //* h0K4_2045
-                                //+a_K4_2045_plus1_m1 //* hp1K4_2045
-                                
-                                //+a_K5_2380_minus1_m1 //* hm1K5_2380
-                                //+a_K5_2380_zero_m1 //* h0K5_2380
-                                //+a_K5_2380_plus1_m1 //* hp1K5_2380
-                                
-                                
-                                +a_K_1680_minus1_m1 * hm1K1680
-                                +a_K_1680_zero_m1 * h0K1680
-                                +a_K_1680_plus1_m1 * hp1K1680
-                                
-                                +a_K0_800_m1 * hK0_800
-                                +a_K0_1430_m1 * hK0_1430
-                                ), 2);
-        // cout << " a_K_892_minus1_m1 * hm1K892 : " << a_K_892_minus1_m1 * hm1K892 << endl;
-        // cout << " a_K_892_zero_m1 * h0K892 : " << a_K_892_zero_m1 * h0K892 << endl;
-        // cout << " a_K_892_plus1_m1 * hp1K892 : " << a_K_892_plus1_m1 * hp1K892 << endl;
-        // cout << " ME sum K_892 -1 : " << a_K_892_minus1_m1 * hm1K892 + a_K_892_zero_m1 * h0K892 + a_K_892_plus1_m1 * hp1K892 << endl;
-        // cout << " a_K_892_minus1_m1  : " << a_K_892_minus1_m1  << endl;
-        // cout << " a_K_892_zero_m1  : " << a_K_892_zero_m1  << endl;
-        // cout << " a_K_892_plus1_m1  : " << a_K_892_plus1_m1  << endl;
-        
-        // cout << "  " << endl;
-        
-        
-        double val_p1 = pow(abs(
-                                
-                                a_K_892_minus1_p1 * hm1K892
-                                +a_K_892_zero_p1 * h0K892
-                                +a_K_892_plus1_p1 * hp1K892
-                                
-                                +a_K_1410_minus1_p1 * hm1K1410
-                                +a_K_1410_zero_p1 * h0K1410
-                                +a_K_1410_plus1_p1 * hp1K1410
-                                
-                                +a_K2_1430_minus1_p1 * hm1K2_1430
-                                +a_K2_1430_zero_p1 * h0K2_1430
-                                +a_K2_1430_plus1_p1 * hp1K2_1430
-                                
-                                //                        a_K3_1780_minus1_p1 //* hm1K3_1780
-                                //                        +a_K3_1780_zero_p1 //* h0K3_1780
-                                //                        +a_K3_1780_plus1_p1 //* hp1K3_1780
-                                
-                                //                        a_K4_2045_minus1_p1 //* hm1K4_2045
-                                //                        +a_K4_2045_zero_p1 //* h0K4_2045
-                                //                        +a_K4_2045_plus1_p1 //* hp1K4_2045
-                                
-                                //                        a_K5_2380_minus1_p1 //* hm1K5_2380
-                                //                        +a_K5_2380_zero_p1 //* h0K5_2380
-                                //                        +a_K5_2380_plus1_p1 //* hp1K5_2380
-                                
-                                +a_K_1680_minus1_p1 * hm1K1680
-                                +a_K_1680_zero_p1 * h0K1680
-                                +a_K_1680_plus1_p1 * hp1K1680
-                                
-                                +a_K0_800_p1 * hK0_800
-                                +a_K0_1430_p1 * hK0_1430
-                                ), 2);
-        
-        // cout << " a_K_892_minus1_p1 * hm1K892 : " << a_K_892_minus1_m1 * hm1K892 << endl;
-        // cout << " a_K_892_zero_p1 * h0K892 : " << a_K_892_zero_p1 * h0K892 << endl;
-        // cout << " a_K_892_plus1_p1 * hp1K892 : " << a_K_892_plus1_p1 * hp1K892 << endl;
-        // cout << " ME sum K_892 +1 : " << a_K_892_minus1_p1 * hm1K892 + a_K_892_zero_p1 * h0K892 + a_K_892_plus1_p1 * hp1K892 << endl;
-        // cout << " a_K_892_minus1_p1  : " << a_K_892_minus1_p1  << endl;
-        // cout << " a_K_892_zero_p1  : " << a_K_892_zero_p1  << endl;
-        // cout << " a_K_892_plus1_p1  : " << a_K_892_plus1_p1  << endl;
-        // cout << " " << endl;
-        
-        
-        
-        double k892_p1 = pow(abs(
-                                 a_K_892_minus1_p1 * hm1K892
-                                 +a_K_892_zero_p1 * h0K892
-                                 +a_K_892_plus1_p1 * hp1K892
-                                 ), 2);
-        
-        double k892_m1 = pow(abs(
-                                 a_K_892_minus1_m1 * hm1K892
-                                 +a_K_892_zero_m1 * h0K892
-                                 +a_K_892_plus1_m1 * hp1K892
-                                 ), 2);
-        
-        
-        double k800_m1 = pow(abs(
-                                 a_K0_800_m1 * hK0_800
-                                 ), 2);
-        double k800_p1 = pow(abs(
-                                 a_K0_800_p1 * hK0_800
-                                 ), 2);
-        //cout << " ME sum K_800 -1 : " << a_K0_800_m1 * hK0_800 << endl;
-        //cout << " ME sum K_800 +1 : " << a_K0_800_p1 * hK0_800 << endl;
-        //cout << " " << endl;
-        double k1410_p1 = pow(abs(
-                                  a_K_1410_minus1_p1 * hm1K1410
-                                  +a_K_1410_zero_p1 * h0K1410
-                                  +a_K_1410_plus1_p1 * hp1K1410
-                                  ), 2);
-        
-        double k1410_m1 = pow(abs(
-                                  a_K_1410_minus1_m1 * hm1K1410
-                                  +a_K_1410_zero_m1 * h0K1410
-                                  +a_K_1410_plus1_m1 * hp1K1410
-                                  ), 2);
-        //cout << " ME sum K_1410 -1 : " << a_K_1410_minus1_m1 * hm1K1410+a_K_1410_zero_m1 * h0K1410+a_K_1410_plus1_m1 * hp1K1410 << endl;
-        //cout << " ME sum K_1410 +1 : " << a_K_1410_minus1_p1 * hm1K1410+a_K_1410_zero_p1 * h0K1410+a_K_1410_plus1_p1 * hp1K1410 << endl;
-        //cout << " " << endl;
-        
-        
-        double k0_1430_p1 = pow(abs(
-                                    a_K0_1430_m1 * hK0_1430
-                                    ), 2);
-        
-        double k0_1430_m1 = pow(abs(
-                                    a_K0_1430_p1 * hK0_1430
-                                    ), 2);
-        //cout << " ME sum K0_1430 -1 : " << a_K0_1430_m1 * hK0_1430 << endl;
-        //cout << " ME sum K0_1430 +1 : " << a_K0_1430_p1 * hK0_1430 << endl;
-        //cout << " " << endl;
-        
-        
-        double k2_1430_m1 = pow(abs(
-                                    a_K2_1430_minus1_m1 * hm1K2_1430
-                                    +a_K2_1430_zero_m1 * h0K2_1430
-                                    +a_K2_1430_plus1_m1 * hp1K2_1430
-                                    ), 2);
-        
-        double k2_1430_p1 = pow(abs(
-                                    a_K2_1430_minus1_p1 * hm1K2_1430
-                                    +a_K2_1430_zero_p1 * h0K2_1430
-                                    +a_K2_1430_plus1_p1 * hp1K2_1430
-                                    ), 2);
-        //cout << " ME sum K2_1430 -1 : " << a_K2_1430_minus1_m1 * hm1K2_1430+a_K2_1430_zero_m1 * h0K2_1430+a_K2_1430_plus1_m1 * hp1K2_1430 << endl;
-        //cout << " ME sum K2_1430 +1 : " << a_K2_1430_minus1_p1 * hm1K2_1430+a_K2_1430_zero_p1 * h0K2_1430+a_K2_1430_plus1_p1 * hp1K2_1430 << endl;
-        //cout << " " << endl;
-        
-        
-        //cout << "sq sum K892 m1: " << k892_m1 << endl;
-        //cout << "sq sum K892 p1: " << k892_p1 << endl;
-        //cout << " " << endl;
-        //cout << "sq sum K800 m1: " << k800_m1 << endl;
-        //cout << "sq sum K800 p1: " << k800_p1 << endl;
-        //cout << " " << endl;
-        //cout << "sq sum K1410 m1: " << k1410_m1 << endl;
-        //cout << "sq sum K1410 p1: " << k1410_p1 << endl;
-        //cout << " " << endl;
-        //cout << "sq sum K0_1430 m1: " << k0_1430_m1 << endl;
-        //cout << "sq sum K0_1430 p1: " << k0_1430_p1 << endl;
-        //cout << " " << endl;
-        //cout << "sq sum K2_1430 m1: " << k2_1430_m1 << endl;
-        //cout << "sq sum K2_1430 p1: " << k2_1430_p1 << endl;
-        //cout << " " << endl;
-        //cout << "sq sum 5 K* m1: " << val_m1 << endl;
-        //cout << "sq sum 5 K* p1: " << val_p1 << endl;
-        //cout << " " << endl;
-        //cout << " sum 5 K* m1 : " << a_K_892_minus1_m1 * hm1K892+a_K_892_zero_m1 * h0K892+a_K_892_plus1_m1 * hp1K892+a_K_1410_minus1_m1 * hm1K1410+a_K_1410_zero_m1 * h0K1410+a_K_1410_plus1_m1 * hp1K1410+a_K2_1430_minus1_m1 * hm1K2_1430+a_K2_1430_zero_m1 * h0K2_1430+a_K2_1430_plus1_m1 * hp1K2_1430+a_K0_800_m1 * hK0_800+a_K0_1430_m1 * hK0_1430  << endl;
-        
-        //cout << " sum 5 K* p1 : " << a_K_892_minus1_p1 * hm1K892+a_K_892_zero_p1 * h0K892+a_K_892_plus1_p1 * hp1K892+a_K_1410_minus1_p1 * hm1K1410+a_K_1410_zero_p1 * h0K1410+a_K_1410_plus1_p1 * hp1K1410+a_K2_1430_minus1_p1 * hm1K2_1430+a_K2_1430_zero_p1 * h0K2_1430+a_K2_1430_plus1_p1 * hp1K2_1430+a_K0_800_p1 * hK0_800+a_K0_1430_p1 * hK0_1430 << endl;
-        //cout << " " << endl;
-        
-        
-        //    return pow(abs(a_K0_800_m1 * hK0_800),2) ;
-        //    return (pow(abs(wigner_d(0,0,0,theta_k)*wigner_d(1,0,-1,theta_jpsi)*hK0_800),2));
-        //    return temp_m1;
-        
-        //cout << "PHSP : " << PHSP(mKPicalc) << endl;
-        return (val_m1+val_p1) * PHSP(mKPicalc) ;
-        //      return ( pow(abs(a_K2_1430),2) ) * PHSP(mKPicalc);
-        //      return (k2_1430_m1 + k2_1430_p1) * PHSP(mKPicalc);
-        
-    } // cos theta K* physical
+        theta_k = TMath::ACos(costhetaHel(m2B,m2KPi,m2K,m2Pi,m2Jpsi,m2JpsiPi));
+    }
+    
+    if (fabs(costhetaHel(m2B,m2JpsiPi,m2Jpsi,m2Pi,m2K,m2KPi))>1 ) {
+        return 0.0;
+    }
+    else { // cos theta K* physical
+        theta_z = TMath::ACos(costhetaHel(m2B,m2JpsiPi,m2Jpsi,m2Pi,m2K,m2KPi));
+    }
+    double alpha_angle = alpha(theta_jpsi,phi,m2KPi,m2JpsiPi);
+    double theta_tilde = TMath::ACos(costhetatilde(theta_jpsi,phi,m2KPi,m2JpsiPi));
+    double phi_tilde = phitilde(theta_jpsi,phi,m2KPi,m2JpsiPi);
+//    double theta_tilde = 1.05;
+//    double phi_tilde = 4.19;
+//    double dummy = costhetatilde(theta_jpsi,phi,m2KPi,m2JpsiPi);
+    
+    
+    double q = dec2mm(mB,mKPicalc,mJpsi);
+    //    double qB = pB/mB;
+    double qB  = q/mB;
+    double qB2 = qB*qB;
+    double qB3 = qB2*qB;
+    double qB4 = qB3*qB;
+    double qB5 = qB4*qB;
     
     //================ Amplitudes for the different K resonances===========
+    // mKPi = K-Pi inv mass calculated from data
+    double qK = dec2mm(mKPicalc,mK,mPi);
     
+    //############## K0*(800) ###################
+    double q0_800 = dec2mm(mB,mK0_800,mJpsi);
+    double qK0_800 = dec2mm(mK0_800,mK,mPi);
+    double fK0_800 = bwff(0,qK,qK0_800,rR);
+    //    complex<double> a_K0_800 = bwamp(mK0_800,wK0_800,mKPicalc,mK,mPi,0,fK0_800,qK0_800,qK);
+    complex<double> a_K0_800 = bwamp(mK0_800,wK0_800,mKPicalc,0,fK0_800,qK0_800,qK);
+    a_K0_800 = a_K0_800  *  qB * bwff(1,q,q0_800,rB); //
+    //    cout<< "a_K0_800 pure bw with ff : " << a_K0_800 << endl;
+    //    cout << "  " << endl ;
+    
+    //############## K*(892) ###################
+    double qK892 = dec2mm(mK892,mK,mPi);
+    double fK892 = bwff(1,qK,qK892,rR);
+    //    complex<double> a_K_892 = bwamp(mK892,wK892,mKPicalc,mK,mPi,1,fK892,qK892,qK);
+    complex<double> a_K_892 = bwamp(mK892,wK892,mKPicalc,1,fK892,qK892,qK);
+    //    cout<< "a_K_892 pure bw with ff : " << a_K_892 << endl;
+    //    cout << "  " << endl ;
+    
+    //############## K*(1410) ###################
+    double qK1410 = dec2mm(mK1410,mK,mPi);
+    double fK1410 = bwff(1,qK,qK1410,rR);
+    //    complex<double> a_K_1410 = bwamp(mK1410,wK1410,mKPicalc,mK,mPi,1,fK1410,qK1410,qK);
+    complex<double> a_K_1410 = bwamp(mK1410,wK1410,mKPicalc,1,fK1410,qK1410,qK);
+    //    cout<< "a_K_1410 pure bw with ff : " << a_K_1410 << endl;
+    //    cout << "  " << endl ;
+    
+    //############## K0*(1430) ###################
+    double q0_1430 = dec2mm(mB,mK0_1430,mJpsi);
+    double qK0_1430 = dec2mm(mK0_1430,mK,mPi);
+    double fK0_1430 = bwff(0,qK,qK0_1430,rR); // check spin
+    //    complex<double> a_K0_1430 = bwamp(mK0_1430,wK0_1430,mKPicalc,mK,mPi,0,fK0_1430,qK0_1430,qK);
+    complex<double> a_K0_1430 = bwamp(mK0_1430,wK0_1430,mKPicalc,0,fK0_1430,qK0_1430,qK);
+    a_K0_1430 = a_K0_1430 * qB * bwff(1,q,q0_1430,rB);
+    //    cout<< "a_K0_1430 pure bw with ff : " << a_K0_1430 << endl;
+    //    cout << "  " << endl ;
+    
+    //############## K2*(1430) ###################
+    double q2_1430 = dec2mm(mB,mK2_1430,mJpsi);
+    double qK2_1430 = dec2mm(mK2_1430,mK,mPi);
+    double fK2_1430 = bwff(2,qK,qK2_1430,rR);
+    //    complex<double> a_K2_1430 = bwamp(mK2_1430,wK2_1430,mKPicalc,mK,mPi,2,fK2_1430,qK2_1430,qK);
+    complex<double> a_K2_1430 = bwamp(mK2_1430,wK2_1430,mKPicalc,2,fK2_1430,qK2_1430,qK);
+    a_K2_1430 = a_K2_1430 * qB * bwff(1,q,q2_1430,rB);
+    //    cout<< "a_K2_1430 pure bw with ff : " << a_K2_1430 << endl;
+    //    cout << "  " << endl ;
+    
+    //############## K*(1680) ###################
+    double qK1680 = dec2mm(mK1680,mK,mPi);
+    double fK1680 = bwff(1,qK,qK1680,rR);
+    //    complex<double> a_K_1680 = bwamp(mK1680,wK1680,mKPicalc,mK,mPi,1,fK1680,qK1680,qK);
+    complex<double> a_K_1680 = bwamp(mK1680,wK1680,mKPicalc,1,fK1680,qK1680,qK);
+    
+    //############## K3*(1780) ###################
+    double q3_1780 = dec2mm(mB,mK3_1780,mJpsi);
+    double qK3_1780 = dec2mm(mK3_1780,mK,mPi);
+    double fK3_1780 = bwff(3,qK,qK3_1780,rR);
+    //    complex<double> a_K3_1780 = bwamp(mK3_1780,wK3_1780,mKPicalc,mK,mPi,3,fK3_1780,qK3_1780,qK);
+    complex<double> a_K3_1780 = bwamp(mK3_1780,wK3_1780,mKPicalc,3,fK3_1780,qK3_1780,qK);
+    a_K3_1780 = a_K3_1780 * qB2 * bwff(2,q,q3_1780,rB);
+    
+    //############## K0*(1950) ###################
+    double q0_1950 = dec2mm(mB,mK0_1950,mJpsi);
+    double qK0_1950 = dec2mm(mK0_1950,mK,mPi);
+    double fK0_1950 = bwff(0,qK,qK0_1950,rR); // check spin
+    //    complex<double> a_K0_1950 = bwamp(mK0_1950,wK0_1950,mKPicalc,mK,mPi,0,fK0_1950,qK0_1950,qK);
+    complex<double> a_K0_1950 = bwamp(mK0_1950,wK0_1950,mKPicalc,0,fK0_1950,qK0_1950,qK);
+    a_K0_1950 = a_K0_1950 * qB * bwff(1,q,q0_1950,rB);
+    
+    //############## K2*(1980) ###################
+    double q2_1980 = dec2mm(mB,mK2_1980,mJpsi);
+    double qK2_1980 = dec2mm(mK2_1980,mK,mPi);
+    double fK2_1980 = bwff(2,qK,qK2_1980,rR);
+    //    complex<double> a_K2_1980 = bwamp(mK2_1980,wK2_1980,mKPicalc,mK,mPi,2,fK2_1980,qK2_1980,qK);
+    complex<double> a_K2_1980 = bwamp(mK2_1980,wK2_1980,mKPicalc,2,fK2_1980,qK2_1980,qK);
+    a_K2_1980 = a_K2_1980 * qB * bwff(1,q,q2_1980,rB);
+    
+    //############## K4*(2045) ###################
+    double q4_2045 = dec2mm(mB,mK4_2045,mJpsi);
+    double qK4_2045 = dec2mm(mK4_2045,mK,mPi);
+    double fK4_2045 = bwff(4,qK,qK4_2045,rR);
+    //    complex<double> a_K4_2045 = bwamp(mK4_2045,wK4_2045,mKPicalc,mK,mPi,4,fK4_2045,qK4_2045,qK);
+    complex<double> a_K4_2045 = bwamp(mK4_2045,wK4_2045,mKPicalc,4,fK4_2045,qK4_2045,qK);
+    a_K4_2045 = a_K4_2045 * qB3 * bwff(3,q,q4_2045,rB);
+    
+    //############## K5*(2380) ###################
+    double q5_2380 = dec2mm(mB,mK5_2380,mJpsi);
+    double qK5_2380 = dec2mm(mK5_2380,mK,mPi);
+    double fK5_2380 = bwff(4,qK,qK5_2380,rR);
+    complex<double> a_K5_2380 = bwamp(mK5_2380,wK5_2380,mKPicalc,4,fK5_2380,qK5_2380,qK);
+    a_K5_2380 = a_K5_2380 * qB4 * bwff(4,q,q5_2380,rB);
+
+
+    //************** Amplitudes for Z resonances *********
+    double qBZ = dec2mm(mB,mJpsiPicalc,mK);
+    double qBZ1 = qBZ/mB;
+    double qBZ2 = qBZ1*qBZ1;
+    double qBZ3 = qBZ2*qBZ1;
+    
+    //############## Z4430 #######################
+    double qZ = dec2mm(mJpsiPicalc,mJpsi,mPi);
+    
+    double qZBdec = dec2mm(mB,mZ4430,mK);
+    double qZ4430 = dec2mm(mZ4430,mJpsi,mPi);
+    double fZ4430 = bwff(1,qZ,qZ4430,rR);
+    complex<double> a_Z4430 = bwamp(mZ4430,wZ4430,mJpsiPicalc,1,fZ4430,qZ4430,qZ);
+    
+    
+    
+    
+    //******************** lepton pair helicity minus 1**************
+    complex<double> index_minus1_m1(0.0,-1*phi);
+    complex<double> a_K_892_minus1_m1 = a_K_892*wigner_d(1,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_892, -1,-1 : " << wigner_d(1,-1,0,theta_k)<< "  " << wigner_d(1,-1,-1,theta_jpsi) << endl;
+    //    cout << " exp * wigner for k_892, -1,-1 : " << exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi) << endl;
+    //    cout << "  " << endl;
+    complex<double> a_K_1410_minus1_m1 = a_K_1410*wigner_d(1,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_1410, -1,-1 : " << wigner_d(1,-1,0,theta_k)<< "  " << wigner_d(1,-1,-1,theta_jpsi) << endl;
+    //    cout << "exp * wigner for k_1410, -1,-1 : " << exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi) << endl;
+    //    cout << "  " << endl;
+    complex<double> a_K2_1430_minus1_m1 = a_K2_1430*wigner_d(2,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+    complex<double> a_K3_1780_minus1_m1 = a_K3_1780*wigner_d(3,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+    complex<double> a_K4_2045_minus1_m1 = a_K4_2045*wigner_d(4,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+    complex<double> a_K5_2380_minus1_m1 = a_K5_2380*wigner_d(5,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k2_1430, -1,-1 : " << wigner_d(2,-1,0,theta_k)<< "  " << wigner_d(1,-1,-1,theta_jpsi) << endl;
+    //    cout << "exp * wigner for k2_1430, -1,-1 : " << exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi) << endl;
+    //    cout << "  " << endl;
+    complex<double> a_K_1680_minus1_m1 = a_K_1680*wigner_d(1,-1,0,theta_k)*exp(index_minus1_m1)*wigner_d(1,-1,-1,theta_jpsi);
+
+    // =================== Z model Xi = -1 , Lambda = -1 ================================
+    complex<double> Zindex_minus1_m1(0.0,-1*phi_tilde);
+    complex<double> Zindex_alpha_m1(0.0,-1*alpha_angle);
+    complex<double> a_Z4430_minus1_m1 = a_Z4430*wigner_d(1,0,-1,theta_z)*exp(Zindex_minus1_m1)*wigner_d(1,-1,-1,theta_tilde)*exp(Zindex_alpha_m1);
+    
+    complex<double> index_zero_m1(0.0,0.0);
+    //    cout << "K892 wigner_thetaK* : " << wigner_d(1,0,0,theta_k) << " exp(0) x wigner_thetaPsi  : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl ;
+    complex<double> a_K_892_zero_m1 = a_K_892*wigner_d(1,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_892, 0,-1 : " << wigner_d(1,0,0,theta_k)<< "  " << wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << "exp * wigner for k_892, -1,-1 : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << "a_K_892_zero_m1 : " << a_K_892_zero_m1 << endl ;
+    //    cout << "  " << endl;
+    
+    complex<double> a_K_1410_zero_m1 = a_K_1410*wigner_d(1,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_1410, 0,-1 : " << wigner_d(1,0,0,theta_k)<< "  " << wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << "exp * wigner for k_1410, 0,-1 : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << "  " << endl;
+    complex<double> a_K2_1430_zero_m1 = a_K2_1430*wigner_d(2,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    complex<double> a_K3_1780_zero_m1 = a_K3_1780*wigner_d(3,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    complex<double> a_K4_2045_zero_m1 = a_K4_2045*wigner_d(4,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    complex<double> a_K5_2380_zero_m1 = a_K5_2380*wigner_d(5,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k2_1430, 0,-1 : " << wigner_d(2,0,0,theta_k)<< "  " << wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << "exp * wigner for k2_1430, 0,-1 : " << exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << "  " << endl;
+    
+    complex<double> a_K_1680_zero_m1 = a_K_1680*wigner_d(1,0,0,theta_k)*exp(index_zero_m1)*wigner_d(1,0,-1,theta_jpsi);
+    
+    complex<double> a_K0_800_m1 = a_K0_800*wigner_d(0,0,0,theta_k)*wigner_d(1,0,-1,theta_jpsi);
+    complex<double> a_K0_1430_m1 = a_K0_1430*wigner_d(0,0,0,theta_k)*wigner_d(1,0,-1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_800, 0,-1 : " << wigner_d(0,0,0,theta_k)<< " " <<wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << " a_K0_800_m1 : " << a_K0_800_m1 << endl;
+    //    cout << " " << endl ;
+    //    cout << "wigner1, wigner2 for k0_1430, 0,-1 : " << wigner_d(0,0,0,theta_k)<< " " <<wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << " a_K0_1430_m1 : " << a_K0_1430_m1 << endl;
+    //    cout << " " << endl ;
+    
+    
+    //    cout << "wigner1, wigner2 for k800 : " << wigner_d(0,0,0,theta_k)<< "  " << wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << "wigner * wigner for k800 : " << wigner_d(0,0,0,theta_k) * wigner_d(1,0,-1,theta_jpsi) << endl;
+    //    cout << "  " << endl;
+    //    cout << "angle : " << theta_jpsi << endl;
+    
+    
+    // =================== Z model Xi = -1 , Lambda = 0 ================================
+    complex<double> Zindex_zero_m1(0.0,0.0);
+    //complex<double> Zindex_alpha_m1(0.0,-1*alpha_angle);
+    complex<double> a_Z4430_zero_m1 = a_Z4430*wigner_d(1,0,0,theta_z)*exp(Zindex_zero_m1)*wigner_d(1,0,-1,theta_tilde)*exp(Zindex_alpha_m1);
+    
+    
+    
+    complex<double> index_plus1_m1(0.0,phi);
+    //    cout << "K892 wigner_thetaK* : " << wigner_d(1,1,0,theta_k) << " exp(iphi) x wigner_thetaPsi  : " << exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi) << endl ;
+    complex<double> a_K_892_plus1_m1 = a_K_892*wigner_d(1,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_892, 1,-1 : " << wigner_d(1,1,0,theta_k)<< "  " << wigner_d(1,1,-1,theta_jpsi) << endl;
+    //    cout << "exp * wigner for k_892, 1,-1 : " << exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi) << endl;
+    //    cout << "a_K_892_plus1_m1 : " << a_K_892_plus1_m1 << endl ;
+    //    cout << "  " << endl;
+    
+    complex<double> a_K_1410_plus1_m1 = a_K_1410*wigner_d(1,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    complex<double> a_K2_1430_plus1_m1 = a_K2_1430*wigner_d(2,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    complex<double> a_K3_1780_plus1_m1 = a_K3_1780*wigner_d(3,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    complex<double> a_K4_2045_plus1_m1 = a_K4_2045*wigner_d(4,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    complex<double> a_K5_2380_plus1_m1 = a_K5_2380*wigner_d(5,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k2_1430, 1,-1 : " << wigner_d(2,1,0,theta_k)<< "  " << wigner_d(1,1,-1,theta_jpsi) << endl;
+    //    cout << "exp * wigner for k2_1430, 1,-1 : " << exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi) << endl;
+    //    cout << "Leo's value : " << -7.4994e-17 * complex<double>(0.484456,-0.123702)<< endl;
+    //    cout << "  " << endl;
+    complex<double> a_K_1680_plus1_m1 = a_K_1680*wigner_d(1,1,0,theta_k)*exp(index_plus1_m1)*wigner_d(1,1,-1,theta_jpsi);
+    
+    // =================== Z model Xi = -1 , Lambda = 1 ================================
+    complex<double> Zindex_plus1_m1(0.0,phi_tilde);
+    //complex<double> Zindex_alpha_m1(0.0,-1*alpha_angle);
+    complex<double> a_Z4430_plus1_m1 = a_Z4430*wigner_d(1,0,1,theta_z)*exp(Zindex_plus1_m1)*wigner_d(1,1,-1,theta_tilde)*exp(Zindex_alpha_m1);
+    
+    
+    
+    
+    //******************** lepton pair helicity plus 1**************
+    complex<double> index_minus1_p1(0.0,-1*phi);
+    complex<double> a_K_892_minus1_p1 = a_K_892*wigner_d(1,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_892, -1,1 : " << wigner_d(1,-1,0,theta_k)<< "  " << wigner_d(1,-1,1,theta_jpsi) << endl;
+    //    cout << " exp * wigner for k_892, -1,1 : " << exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi) << endl;
+    //    cout << " a_K_892_minus1_p1 : " << a_K_892_minus1_p1 << endl;
+    //    cout << " " << endl;
+    complex<double> a_K_1410_minus1_p1 = a_K_1410*wigner_d(1,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    complex<double> a_K2_1430_minus1_p1 = a_K2_1430*wigner_d(2,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    complex<double> a_K3_1780_minus1_p1 = a_K3_1780*wigner_d(3,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    complex<double> a_K4_2045_minus1_p1 = a_K4_2045*wigner_d(4,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    complex<double> a_K5_2380_minus1_p1 = a_K5_2380*wigner_d(5,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    complex<double> a_K_1680_minus1_p1 = a_K_1680*wigner_d(1,-1,0,theta_k)*exp(index_minus1_p1)*wigner_d(1,-1,1,theta_jpsi);
+    
+    
+    // =================== Z model Xi = 1 , Lambda = -1 ================================
+    complex<double> Zindex_minus1_p1(0.0,-1*phi_tilde);
+    complex<double> Zindex_alpha_p1(0.0,alpha_angle);
+    complex<double> a_Z4430_minus1_p1 = a_Z4430*wigner_d(1,0,-1,theta_z)*exp(Zindex_minus1_p1)*wigner_d(1,-1,-1,theta_tilde)*exp(Zindex_alpha_p1);
+    
+    complex<double> index_zero_p1(0.0,0.0);
+    complex<double> a_K_892_zero_p1 = a_K_892*wigner_d(1,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_892, 0,1 : " << wigner_d(1,0,0,theta_k)<< "  " << wigner_d(1,0,1,theta_jpsi) << endl;
+    //    cout << "exp * wigner for k_892, 0,1 : " << exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi) << endl;
+    //    cout << " a_K_892_zero_p1 : " << a_K_892_zero_p1 << endl;
+    //    cout << "  " << endl;
+    
+    complex<double> a_K_1410_zero_p1 = a_K_1410*wigner_d(1,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    complex<double> a_K2_1430_zero_p1 = a_K2_1430*wigner_d(2,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    complex<double> a_K3_1780_zero_p1 = a_K3_1780*wigner_d(3,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    complex<double> a_K4_2045_zero_p1 = a_K4_2045*wigner_d(4,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    complex<double> a_K5_2380_zero_p1 = a_K5_2380*wigner_d(5,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    complex<double> a_K_1680_zero_p1 = a_K_1680*wigner_d(1,0,0,theta_k)*exp(index_zero_p1)*wigner_d(1,0,1,theta_jpsi);
+    
+    // =================== Z model Xi = 1 , Lambda = 0 ================================
+    complex<double> Zindex_zero_p1(0.0,0.0);
+    //complex<double> Zindex_alpha_p1(0.0,alpha_angle);
+    complex<double> a_Z4430_zero_p1 = a_Z4430*wigner_d(1,0,0,theta_z)*exp(Zindex_zero_p1)*wigner_d(1,0,1,theta_tilde)*exp(Zindex_alpha_p1);
+    
+    
+    complex<double> a_K0_800_p1 = a_K0_800*wigner_d(0,0,0,theta_k)*wigner_d(1,0,1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_800, 0,1 : " << wigner_d(0,0,0,theta_k)<< " " <<wigner_d(1,0,1,theta_jpsi) << endl;
+    //    cout << " a_K0_800_p1 : " << a_K0_800_p1 << endl;
+    complex<double> a_K0_1430_p1 = a_K0_1430*wigner_d(0,0,0,theta_k)*wigner_d(1,0,1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k0_1430, 0,1 : " << wigner_d(0,0,0,theta_k)<< " " <<wigner_d(1,0,1,theta_jpsi) << endl;
+    //    cout << " a_K0_1430_p1 : " << a_K0_1430_p1 << endl;
+    //    cout << " " << endl ;
+    
+    complex<double> index_plus1_p1(0.0,phi);
+    complex<double> a_K_892_plus1_p1 = a_K_892*wigner_d(1,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    //    cout << "wigner1, wigner2 for k_892, 1,1 : " << wigner_d(1,1,0,theta_k)<< "  " << wigner_d(1,1,1,theta_jpsi) << endl;
+    //    cout << "exp * wigner for k_892, 1,1 : " << exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi) << endl;
+    //    cout << " a_K_892_plus1_p1 : " << a_K_892_plus1_p1 << endl;
+    //    cout << "  " << endl;
+    
+    
+    
+    
+    complex<double> a_K_1410_plus1_p1 = a_K_1410*wigner_d(1,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    complex<double> a_K2_1430_plus1_p1 = a_K2_1430*wigner_d(2,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    complex<double> a_K3_1780_plus1_p1 = a_K3_1780*wigner_d(3,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    complex<double> a_K4_2045_plus1_p1 = a_K4_2045*wigner_d(4,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    complex<double> a_K5_2380_plus1_p1 = a_K5_2380*wigner_d(5,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    complex<double> a_K_1680_plus1_p1 = a_K_1680*wigner_d(1,1,0,theta_k)*exp(index_plus1_p1)*wigner_d(1,1,1,theta_jpsi);
+    
+    
+    // =================== Z model Xi = 1 , Lambda = 1 ================================
+    complex<double> Zindex_plus1_p1(0.0,phi_tilde);
+    //complex<double> Zindex_alpha_p1(0.0,alpha_angle);
+    complex<double> a_Z4430_plus1_p1 = a_Z4430*wigner_d(1,0,1,theta_z)*exp(Zindex_plus1_p1)*wigner_d(1,1,1,theta_tilde)*exp(Zindex_alpha_p1);
+    
+    
+    //******************* helicity phase ***************************
+    
+    complex<double> hK0_800(1.12*TMath::Cos(2.3),1.12*TMath::Sin(2.3));
+    //cout << "hK0_800 : " << hK0_800 << endl;
+    //cout << "  " << endl;
+    
+    complex<double> h0K892(1*TMath::Cos(0),1*TMath::Sin(0));
+    complex<double> hp1K892(0.844*TMath::Cos(3.14),0.844*TMath::Sin(3.14));
+    complex<double> hm1K892(0.196*TMath::Cos(-1.7),0.196*TMath::Sin(-1.7));
+    
+    //cout << "h0K892 : " << h0K892 << endl;
+    //cout << "hp1K892 : " << hp1K892 << endl;
+    //cout << "hm1K892 : " << hm1K892 << endl;
+    //cout << "  " << endl;
+    
+    complex<double> h0K1410(0.119*TMath::Cos(0.81),0.119*TMath::Sin(0.81));
+    complex<double> hp1K1410(0.123*TMath::Cos(-1.04),0.123*TMath::Sin(-1.04));
+    complex<double> hm1K1410(0.036*TMath::Cos(0.67),0.036*TMath::Sin(0.67));
+    
+    complex<double> hK0_1430(0.89*TMath::Cos(-2.17),0.89*TMath::Sin(-2.17));
+    //cout << "hK0_1430 : " << hK0_1430 << endl;
+    //cout << "  " << endl;
+    
+    complex<double> h0K2_1430(4.66*TMath::Cos(-0.32),4.66*TMath::Sin(-0.32));
+    complex<double> hp1K2_1430(4.65*TMath::Cos(-3.05),4.65*TMath::Sin(-3.05));
+    complex<double> hm1K2_1430(1.26*TMath::Cos(-1.92),1.26*TMath::Sin(-1.92));
+    
+    complex<double> h0K1680(0.139*TMath::Cos(-2.46),0.139*TMath::Sin(-2.46));
+    complex<double> hp1K1680(0.082*TMath::Cos(-2.85),0.082*TMath::Sin(-2.85));
+    complex<double> hm1K1680(0.161*TMath::Cos(1.88),0.161*TMath::Sin(1.88));
+    
+    complex<double> h0K3_1780(16.8*TMath::Cos(-1.43),16.8*TMath::Sin(-1.43));
+    complex<double> hp1K3_1780(19.1*TMath::Cos(2.03),19.1*TMath::Sin(2.03));
+    complex<double> hm1K3_1780(10.2*TMath::Cos(1.55),10.2*TMath::Sin(1.55));
+    
+    complex<double> hK0_1950(0.241*TMath::Cos(-2.39),0.241*TMath::Sin(-2.39));
+    
+    complex<double> h0K2_1980(4.53*TMath::Cos(-0.26),4.53*TMath::Sin(-0.26));
+    complex<double> hp1K2_1980(3.78*TMath::Cos(3.08),3.78*TMath::Sin(3.08));
+    complex<double> hm1K2_1980(3.51*TMath::Cos(2.63),3.51*TMath::Sin(2.63));
+    
+    complex<double> h0K4_2045(590*TMath::Cos(-2.66),590*TMath::Sin(-2.66));
+    complex<double> hp1K4_2045(676*TMath::Cos(0.06),676*TMath::Sin(0.06));
+    complex<double> hm1K4_2045(103*TMath::Cos(-1.03),103*TMath::Sin(-1.03));
+    
+    
+    //================ Z model ============================
+    complex<double> h0Z4430(1.12*TMath::Cos(-0.031),1.12*TMath::Sin(-0.031));
+    complex<double> hp1Z4430(1.17*TMath::Cos(0.77),1.17*TMath::Sin(0.77));
+    complex<double> hm1Z4430(1.17*TMath::Cos(0.77),1.17*TMath::Sin(0.77));
+    
+    complex<double> h0Z4200(0.71*TMath::Cos(2.14),0.71*TMath::Sin(2.14));
+    complex<double> hp1Z4200(3.23*TMath::Cos(3.00),3.23*TMath::Sin(3.00));
+    complex<double> hm1Z4200(3.23*TMath::Cos(3.00),3.23*TMath::Sin(3.00));
+    
+    
+    //    double val = pow(abs(//a_K_892_minus1_m1 //* exp(helphase_index_K_892_minus1)
+    //+a_K_892_zero_m1   //* exp(helphase_index_K_892_zero)
+    //+a_K_892_plus1_m1  //* exp(helphase_index_K_892_plus1)
+    //                        hK0_800*a_K0_800 + hK892*a_K_892 + hK1410*a_K_1410 + hK0_1430*a_K0_1430 + hK2_1430*a_K2_1430
+    //                        + hK1680*a_K_1680 + hK3_1780*a_K3_1780 + hK0_1950*a_K0_1950 + hK2_1980*a_K2_1980 + hK4_2045*a_K4_2045
+    //a_K0_800 + a_K_892 + a_K_1410 + a_K0_1430 + a_K2_1430 + a_K_1680 + a_K3_1780 + a_K0_1950 + a_K2_1980 + a_K4_2045
+    //+a_K0_800
+    //                        a_K0_1430_m1
+    //a_K0_1430
+    //+a_K_892_minus1_p1 //* exp(helphase_index_K_892_minus1)
+    //+a_K_892_zero_p1   //* exp(helphase_index_K_892_zero)
+    //+a_K_892_plus1_p1
+    
+    //+ a_K0_1430_p1
+    //                        ), 2); //* exp(helphase_index_K_892_plus1)),2);
+    
+    double val_m1 = pow(abs(
+                            
+                            a_K_892_minus1_m1 * hm1K892
+                            +a_K_892_zero_m1 * h0K892
+                            +a_K_892_plus1_m1 * hp1K892
+                            
+                            +a_Z4430_minus1_m1 * hm1Z4430
+                            +a_Z4430_zero_m1 * h0Z4430
+                            +a_Z4430_plus1_m1 * hp1Z4430
+                            
+                            //+a_K_1410_minus1_m1 * hm1K1410
+                            //+a_K_1410_zero_m1 * h0K1410
+                            //+a_K_1410_plus1_m1 * hp1K1410
+                            
+                            //+a_K2_1430_minus1_m1 * hm1K2_1430
+                            //+a_K2_1430_zero_m1 * h0K2_1430
+                            //+a_K2_1430_plus1_m1 * hp1K2_1430
+                            
+                            //+a_K3_1780_minus1_m1 //* hm1K3_1780
+                            //+a_K3_1780_zero_m1 //* h0K3_1780
+                            //+a_K3_1780_plus1_m1 //* hp1K3_1780
+                            
+                            //+a_K4_2045_minus1_m1 //* hm1K4_2045
+                            //+a_K4_2045_zero_m1 //* h0K4_2045
+                            //+a_K4_2045_plus1_m1 //* hp1K4_2045
+                            
+                            //+a_K5_2380_minus1_m1 //* hm1K5_2380
+                            //+a_K5_2380_zero_m1 //* h0K5_2380
+                            //+a_K5_2380_plus1_m1 //* hp1K5_2380
+                            
+                            
+                            //+a_K_1680_minus1_m1 * hm1K1680
+                            //+a_K_1680_zero_m1 * h0K1680
+                            //+a_K_1680_plus1_m1 * hp1K1680
+                            
+                            //+a_K0_800_m1 * hK0_800
+                            //+a_K0_1430_m1 * hK0_1430
+                            ), 2);
+    // cout << " a_K_892_minus1_m1 * hm1K892 : " << a_K_892_minus1_m1 * hm1K892 << endl;
+    // cout << " a_K_892_zero_m1 * h0K892 : " << a_K_892_zero_m1 * h0K892 << endl;
+    // cout << " a_K_892_plus1_m1 * hp1K892 : " << a_K_892_plus1_m1 * hp1K892 << endl;
+    // cout << " ME sum K_892 -1 : " << a_K_892_minus1_m1 * hm1K892 + a_K_892_zero_m1 * h0K892 + a_K_892_plus1_m1 * hp1K892 << endl;
+    // cout << " a_K_892_minus1_m1  : " << a_K_892_minus1_m1  << endl;
+    // cout << " a_K_892_zero_m1  : " << a_K_892_zero_m1  << endl;
+    // cout << " a_K_892_plus1_m1  : " << a_K_892_plus1_m1  << endl;
+    
+    // cout << "  " << endl;
+    
+    
+    double val_p1 = pow(abs(
+                            
+                            a_K_892_minus1_p1 * hm1K892
+                            +a_K_892_zero_p1 * h0K892
+                            +a_K_892_plus1_p1 * hp1K892
+                            
+                            +a_Z4430_minus1_p1 * hm1Z4430
+                            +a_Z4430_zero_p1 * h0Z4430
+                            +a_Z4430_plus1_p1 * hp1Z4430
+                            
+                            //+a_K_1410_minus1_p1 * hm1K1410
+                            //+a_K_1410_zero_p1 * h0K1410
+                            //+a_K_1410_plus1_p1 * hp1K1410
+                            
+                            //+a_K2_1430_minus1_p1 * hm1K2_1430
+                            //+a_K2_1430_zero_p1 * h0K2_1430
+                            //+a_K2_1430_plus1_p1 * hp1K2_1430
+                            
+                            //                        a_K3_1780_minus1_p1 //* hm1K3_1780
+                            //                        +a_K3_1780_zero_p1 //* h0K3_1780
+                            //                        +a_K3_1780_plus1_p1 //* hp1K3_1780
+                            
+                            //                        a_K4_2045_minus1_p1 //* hm1K4_2045
+                            //                        +a_K4_2045_zero_p1 //* h0K4_2045
+                            //                        +a_K4_2045_plus1_p1 //* hp1K4_2045
+                            
+                            //                        a_K5_2380_minus1_p1 //* hm1K5_2380
+                            //                        +a_K5_2380_zero_p1 //* h0K5_2380
+                            //                        +a_K5_2380_plus1_p1 //* hp1K5_2380
+                            
+                            //+a_K_1680_minus1_p1 * hm1K1680
+                            //+a_K_1680_zero_p1 * h0K1680
+                            //+a_K_1680_plus1_p1 * hp1K1680
+                            
+                            //+a_K0_800_p1 * hK0_800
+                            //+a_K0_1430_p1 * hK0_1430
+                            ), 2);
+    
+    // cout << " a_K_892_minus1_p1 * hm1K892 : " << a_K_892_minus1_m1 * hm1K892 << endl;
+    // cout << " a_K_892_zero_p1 * h0K892 : " << a_K_892_zero_p1 * h0K892 << endl;
+    // cout << " a_K_892_plus1_p1 * hp1K892 : " << a_K_892_plus1_p1 * hp1K892 << endl;
+    // cout << " ME sum K_892 +1 : " << a_K_892_minus1_p1 * hm1K892 + a_K_892_zero_p1 * h0K892 + a_K_892_plus1_p1 * hp1K892 << endl;
+    // cout << " a_K_892_minus1_p1  : " << a_K_892_minus1_p1  << endl;
+    // cout << " a_K_892_zero_p1  : " << a_K_892_zero_p1  << endl;
+    // cout << " a_K_892_plus1_p1  : " << a_K_892_plus1_p1  << endl;
+    // cout << " " << endl;
+    
+    
+    
+    double k892_p1 = pow(abs(
+                             a_K_892_minus1_p1 * hm1K892
+                             +a_K_892_zero_p1 * h0K892
+                             +a_K_892_plus1_p1 * hp1K892
+                             ), 2);
+    
+    double k892_m1 = pow(abs(
+                             a_K_892_minus1_m1 * hm1K892
+                             +a_K_892_zero_m1 * h0K892
+                             +a_K_892_plus1_m1 * hp1K892
+                             ), 2);
+    
+    
+    double k800_m1 = pow(abs(
+                             a_K0_800_m1 * hK0_800
+                             ), 2);
+    double k800_p1 = pow(abs(
+                             a_K0_800_p1 * hK0_800
+                             ), 2);
+    //cout << " ME sum K_800 -1 : " << a_K0_800_m1 * hK0_800 << endl;
+    //cout << " ME sum K_800 +1 : " << a_K0_800_p1 * hK0_800 << endl;
+    //cout << " " << endl;
+    double k1410_p1 = pow(abs(
+                              a_K_1410_minus1_p1 * hm1K1410
+                              +a_K_1410_zero_p1 * h0K1410
+                              +a_K_1410_plus1_p1 * hp1K1410
+                              ), 2);
+    
+    double k1410_m1 = pow(abs(
+                              a_K_1410_minus1_m1 * hm1K1410
+                              +a_K_1410_zero_m1 * h0K1410
+                              +a_K_1410_plus1_m1 * hp1K1410
+                              ), 2);
+    //cout << " ME sum K_1410 -1 : " << a_K_1410_minus1_m1 * hm1K1410+a_K_1410_zero_m1 * h0K1410+a_K_1410_plus1_m1 * hp1K1410 << endl;
+    //cout << " ME sum K_1410 +1 : " << a_K_1410_minus1_p1 * hm1K1410+a_K_1410_zero_p1 * h0K1410+a_K_1410_plus1_p1 * hp1K1410 << endl;
+    //cout << " " << endl;
+    
+    
+    double k0_1430_p1 = pow(abs(
+                                a_K0_1430_m1 * hK0_1430
+                                ), 2);
+    
+    double k0_1430_m1 = pow(abs(
+                                a_K0_1430_p1 * hK0_1430
+                                ), 2);
+    //cout << " ME sum K0_1430 -1 : " << a_K0_1430_m1 * hK0_1430 << endl;
+    //cout << " ME sum K0_1430 +1 : " << a_K0_1430_p1 * hK0_1430 << endl;
+    //cout << " " << endl;
+    
+    
+    double k2_1430_m1 = pow(abs(
+                                a_K2_1430_minus1_m1 * hm1K2_1430
+                                +a_K2_1430_zero_m1 * h0K2_1430
+                                +a_K2_1430_plus1_m1 * hp1K2_1430
+                                ), 2);
+    
+    double k2_1430_p1 = pow(abs(
+                                a_K2_1430_minus1_p1 * hm1K2_1430
+                                +a_K2_1430_zero_p1 * h0K2_1430
+                                +a_K2_1430_plus1_p1 * hp1K2_1430
+                                ), 2);
+    //cout << " ME sum K2_1430 -1 : " << a_K2_1430_minus1_m1 * hm1K2_1430+a_K2_1430_zero_m1 * h0K2_1430+a_K2_1430_plus1_m1 * hp1K2_1430 << endl;
+    //cout << " ME sum K2_1430 +1 : " << a_K2_1430_minus1_p1 * hm1K2_1430+a_K2_1430_zero_p1 * h0K2_1430+a_K2_1430_plus1_p1 * hp1K2_1430 << endl;
+    //cout << " " << endl;
+    
+    
+    //cout << "sq sum K892 m1: " << k892_m1 << endl;
+    //cout << "sq sum K892 p1: " << k892_p1 << endl;
+    //cout << " " << endl;
+    //cout << "sq sum K800 m1: " << k800_m1 << endl;
+    //cout << "sq sum K800 p1: " << k800_p1 << endl;
+    //cout << " " << endl;
+    //cout << "sq sum K1410 m1: " << k1410_m1 << endl;
+    //cout << "sq sum K1410 p1: " << k1410_p1 << endl;
+    //cout << " " << endl;
+    //cout << "sq sum K0_1430 m1: " << k0_1430_m1 << endl;
+    //cout << "sq sum K0_1430 p1: " << k0_1430_p1 << endl;
+    //cout << " " << endl;
+    //cout << "sq sum K2_1430 m1: " << k2_1430_m1 << endl;
+    //cout << "sq sum K2_1430 p1: " << k2_1430_p1 << endl;
+    //cout << " " << endl;
+    //cout << "sq sum 5 K* m1: " << val_m1 << endl;
+    //cout << "sq sum 5 K* p1: " << val_p1 << endl;
+    //cout << " " << endl;
+    //cout << " sum 5 K* m1 : " << a_K_892_minus1_m1 * hm1K892+a_K_892_zero_m1 * h0K892+a_K_892_plus1_m1 * hp1K892+a_K_1410_minus1_m1 * hm1K1410+a_K_1410_zero_m1 * h0K1410+a_K_1410_plus1_m1 * hp1K1410+a_K2_1430_minus1_m1 * hm1K2_1430+a_K2_1430_zero_m1 * h0K2_1430+a_K2_1430_plus1_m1 * hp1K2_1430+a_K0_800_m1 * hK0_800+a_K0_1430_m1 * hK0_1430  << endl;
+    
+    //cout << " sum 5 K* p1 : " << a_K_892_minus1_p1 * hm1K892+a_K_892_zero_p1 * h0K892+a_K_892_plus1_p1 * hp1K892+a_K_1410_minus1_p1 * hm1K1410+a_K_1410_zero_p1 * h0K1410+a_K_1410_plus1_p1 * hp1K1410+a_K2_1430_minus1_p1 * hm1K2_1430+a_K2_1430_zero_p1 * h0K2_1430+a_K2_1430_plus1_p1 * hp1K2_1430+a_K0_800_p1 * hK0_800+a_K0_1430_p1 * hK0_1430 << endl;
+    //cout << " " << endl;
+    
+    
+    //    return pow(abs(a_K0_800_m1 * hK0_800),2) ;
+    //    return (pow(abs(wigner_d(0,0,0,theta_k)*wigner_d(1,0,-1,theta_jpsi)*hK0_800),2));
+    //    return temp_m1;
+    
+    //cout << "PHSP : " << PHSP(mKPicalc) << endl;
+    return (val_m1+val_p1) * PHSP(mKPicalc) ;
+    //      return ( pow(abs(a_K2_1430),2) ) * PHSP(mKPicalc);
+    //      return (k2_1430_m1 + k2_1430_p1) * PHSP(mKPicalc);
+    
+//} // cos theta K* physical
+
+//================ Amplitudes for the different K resonances===========
+
 }// signal density end
 //================ Signal Density Calculation ========
 
