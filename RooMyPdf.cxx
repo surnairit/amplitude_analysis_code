@@ -351,7 +351,7 @@ double RooMyPdf::alpha(double theta, double phi, double m2kpi, double m2jpsipi) 
 double RooMyPdf::costhetatilde(double theta, double phi, double m2kpi, double m2jpsipi) const
 {
     // K momentum in B0 frame
-    double pk_B0 = dec2mm(mB,sqrt(m2jpsipi),mK);
+    double pk_B0 = dec2mm(B0_mass,sqrt(m2jpsipi),kaonCh_mass);
     TLorentzVector K_B0;
     K_B0.SetPxPyPzE(0.0,0.0,pk_B0,sqrt(m2K+pk_B0*pk_B0));
     
@@ -369,7 +369,7 @@ double RooMyPdf::costhetatilde(double theta, double phi, double m2kpi, double m2
     TLorentzVector K_Zc;
     K_Zc.SetPxPyPzE(pk*sin(thetaz),0.0,pk*cos(thetaz),Ek);
     
-    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,mPi);
+    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,pionCh_mass);
     
     double Epi = sqrt(m2Pi+ppi*ppi);
     TLorentzVector Pi_Zc;
@@ -387,79 +387,7 @@ double RooMyPdf::costhetatilde(double theta, double phi, double m2kpi, double m2
     Pi_jpsi.Boost( -Jpsi_Zc.BoostVector() );
     
     // Muon momenta in Jpsi rest frame
-    double pmu = dec2mm(m2Jpsi,muon_mass,muon_mass);
-    double Emu = sqrt(muon_mass*muon_mass + pmu*pmu);
-    
-    double denom = sqrt( (0.25*pow((m2B-m2kpi+m2Jpsi),2)-m2B*m2Jpsi)*(0.25*m2Jpsi*m2Jpsi-muon_mass*muon_mass*m2Jpsi) );
-    double m2kpimu = 0.5*( m2B+m2kpi+2.0*muon_mass*muon_mass-m2Jpsi-4.0*TMath::Cos(theta)*denom/m2Jpsi );
-    
-    double Ek_jpsi = K_jpsi.E();
-    double pkx = K_jpsi.Px();
-    double pkz = K_jpsi.Pz();
-    
-    double Epi_jpsi = Pi_jpsi.E();
-    double ppiz = Pi_jpsi.Pz();
-    
-    double a = pow((Ek_jpsi+Emu+Epi_jpsi),2) - m2kpimu - (pkx*pkx + pkz*pkz +2.0*pkz*ppiz + pmu*pmu + ppiz*ppiz );
-    double b = 2.0*pmu*(pkz+ppiz);
-    double c = 2.0*pkx*pmu*cos(phi);
-    
-//    cout << "denom :" << denom << endl;
-//    cout << "b :" << m2kpimu << endl;
-//    cout << "c :" << (pkx*pkx + pkz*pkz +2.0*pkz*ppiz + pmu*pmu + ppiz*ppiz ) << endl;
-    
-        if ( (b*b+c*c-a*a)>=0.0 ) {
-           return ( a*b + sqrt(c*c*(b*b+c*c-a*a)) )/(b*b+c*c);
-//           cout<< ( a*b + sqrt(c*c*(b*b+c*c-a*a)) )/(b*b+c*c) << endl;
-    //return c;
-        }
-        else {return 10.0;}
-    
-}
-//================ Theta tilde =======================
-
-
-//================ phi tilde =======================
-double RooMyPdf::phitilde(double theta, double phi, double m2kpi, double m2jpsipi) const
-{
-    // K momentum in B0 frame
-    double pk_B0 = dec2mm(mB,sqrt(m2jpsipi),mK);
-    TLorentzVector K_B0;
-    K_B0.SetPxPyPzE(0.0,0.0,pk_B0,sqrt(m2K+pk_B0*pk_B0));
-    
-    TLorentzVector Zc_B0;
-    Zc_B0.SetPxPyPzE(0.0,0.0,-pk_B0,sqrt(m2jpsipi+pk_B0*pk_B0));
-    
-    // Boost K to Zc rest frame
-    TLorentzVector K_Zc_old = K_B0;
-    K_Zc_old.Boost( -Zc_B0.BoostVector() );
-    
-    // 4 momenta in Zc rest frame (with a different coordinate system)
-    double thetaz = acos(  costhetaHel(m2B,m2jpsipi,m2Jpsi,m2Pi,m2K,m2kpi)  );
-    double pk = K_Zc_old.Pz();
-    double Ek = sqrt(m2K+pk*pk);
-    TLorentzVector K_Zc;
-    K_Zc.SetPxPyPzE(pk*sin(thetaz),0.0,pk*cos(thetaz),Ek);
-    
-    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,mPi);
-    
-    double Epi = sqrt(m2Pi+ppi*ppi);
-    TLorentzVector Pi_Zc;
-    Pi_Zc.SetPxPyPzE(0.0,0.0,ppi,Epi);
-    
-    double Epsi = sqrt(m2Jpsi+ppi*ppi);
-    TLorentzVector Jpsi_Zc;
-    Jpsi_Zc.SetPxPyPzE(0.0,0.0,-ppi,Epsi);
-    
-    // Boost everything to Jpsi frame
-    TLorentzVector K_jpsi = K_Zc;
-    K_jpsi.Boost( -Jpsi_Zc.BoostVector() );
-    
-    TLorentzVector Pi_jpsi = Pi_Zc;
-    Pi_jpsi.Boost( -Jpsi_Zc.BoostVector() );
-    
-    // Muon momenta in Jpsi rest frame
-    double pmu = dec2mm(m2Jpsi,muon_mass,muon_mass);
+    double pmu = dec2mm(mJpsi,muon_mass,muon_mass);
     double Emu = sqrt(muon_mass*muon_mass + pmu*pmu);
     
     double denom = sqrt( (0.25*pow((m2B-m2kpi+m2Jpsi),2)-m2B*m2Jpsi)*(0.25*m2Jpsi*m2Jpsi-muon_mass*muon_mass*m2Jpsi) );
@@ -475,10 +403,107 @@ double RooMyPdf::phitilde(double theta, double phi, double m2kpi, double m2jpsip
     double a = pow((Ek_jpsi+Emu+Epi_jpsi),2) - m2kpimu - (pkx*pkx + pkz*pkz +2.0*pkz*ppiz + pmu*pmu + ppiz*ppiz );
     double b = 2.0*pmu*(pkz+ppiz);
     double c = 2.0*pkx*pmu*cos(phi);
+    double discr = c*c*(b*b+c*c-a*a);
     
-    if ( (b*b+c*c-a*a)>=0.0 ) { // discriminant check
-        double costhtilde = ( a*b + sqrt(c*c*(b*b+c*c-a*a)) )/(b*b+c*c);
-        double sinthtilde = ( a*c*c - b * sqrt(c*c*(b*b+c*c-a*a)) )/(b*b*b+c*c*c);
+    
+    TLorentzVector PKPi = K_jpsi + Pi_jpsi;
+    double kpi_angle = PKPi.Vect().Angle(Pi_jpsi.Vect());
+    
+    
+    if ( discr>=0.0 && fabs( TMath::Cos(theta) )<0.98 ) {
+        
+        double sinth1 = -(a*c*c-b*sqrt(discr))/(b*b*c+c*c*c);
+        double costh1 = ( a*b + sqrt(discr) )/(b*b+c*c);
+        double th1 = TMath::ACos(costh1);
+        
+        double sinth2 = -(a*c*c+b*sqrt(discr))/(b*b*c+c*c*c);
+        double costh2 = ( a*b - sqrt(discr) )/(b*b+c*c);
+        double th2 = TMath::ACos(costh2);
+        
+        double costh_big, costh_small;
+        
+        if (th1>th2) {
+            costh_big = costh1;
+            costh_small = costh2;
+        }
+        else {
+            costh_big = costh2;
+            costh_small = costh1;
+        }
+        
+        /*
+        if ( fabs(phi)>=1.570796 ) {
+            return costh_small;
+        }
+        else {
+            return costh_big;
+        }
+        */
+        
+        if (sinth1 <=0.0) {return costh1; }
+        else {return costh2;}
+        
+    }
+    else {
+        if (TMath::Cos(theta) >= 0.0 ){
+            return TMath::Cos(kpi_angle);
+        }
+        else {
+            return -TMath::Cos(kpi_angle);
+        }
+    }
+    
+}
+//================ Theta tilde =======================
+
+
+//================ phi tilde =======================
+double RooMyPdf::phitilde(double theta, double phi, double m2kpi, double m2jpsipi) const
+{
+    // K momentum in B0 frame
+    double pk_B0 = dec2mm(B0_mass,sqrt(m2jpsipi),kaonCh_mass);
+    TLorentzVector K_B0;
+    K_B0.SetPxPyPzE(0.0,0.0,pk_B0,sqrt(m2K+pk_B0*pk_B0));
+    
+    TLorentzVector Zc_B0;
+    Zc_B0.SetPxPyPzE(0.0,0.0,-pk_B0,sqrt(m2jpsipi+pk_B0*pk_B0));
+    
+    // Boost K to Zc rest frame
+    TLorentzVector K_Zc_old = K_B0;
+    K_Zc_old.Boost( -Zc_B0.BoostVector() );
+    
+    // 4 momenta in Zc rest frame (with a different coordinate system)
+    double thetaz = acos(  costhetaHel(m2B,m2jpsipi,m2Jpsi,m2Pi,m2K,m2kpi)  );
+    double pk = K_Zc_old.Pz();
+    double Ek = sqrt(m2K+pk*pk);
+    TLorentzVector K_Zc;
+    K_Zc.SetPxPyPzE(pk*sin(thetaz),0.0,pk*cos(thetaz),Ek);
+    
+    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,pionCh_mass); // jpsi mass var name diff in Gen jp_mass
+    
+    double Epi = sqrt(m2Pi+ppi*ppi);
+    TLorentzVector Pi_Zc;
+    Pi_Zc.SetPxPyPzE(0.0,0.0,ppi,Epi);
+    
+    double Epsi = sqrt(m2Jpsi+ppi*ppi);
+    TLorentzVector Jpsi_Zc;
+    Jpsi_Zc.SetPxPyPzE(0.0,0.0,-ppi,Epsi);
+    
+    // Boost everything to Jpsi frame
+    TLorentzVector K_jpsi = K_Zc;
+    K_jpsi.Boost( -Jpsi_Zc.BoostVector() );
+    
+    TLorentzVector Pi_jpsi = Pi_Zc;
+    Pi_jpsi.Boost( -Jpsi_Zc.BoostVector() );
+    
+    // Muon momenta in Jpsi rest frame
+    double pmu = dec2mm(mJpsi,muon_mass,muon_mass); // jpsi mass var name diff in Gen jp_mass
+    double Emu = sqrt(muon_mass*muon_mass + pmu*pmu);
+    
+    double costhtilde = costhetatilde(theta, phi, m2kpi, m2jpsipi);
+    
+    if ( fabs(costhtilde)<=1.00 ) {
+        double sinthtilde = TMath::Sin(TMath::ACos(costhtilde));
         
         TLorentzVector muP;
         muP.SetPxPyPzE( pmu*sinthtilde*cos(phi), -pmu*sinthtilde*sin(phi), -pmu*costhtilde, Emu );
@@ -492,9 +517,9 @@ double RooMyPdf::phitilde(double theta, double phi, double m2kpi, double m2jpsip
             phtld	=	-MuPPiPlane.Angle(KPiPlane);
         
         return phtld;
-        
-    } // discriminant check
+    }
     else {return 10.0;}
+    
 }
 //================ phi tilde =======================
 
@@ -898,13 +923,13 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
     
     double val_m1 = pow(abs(
                             
-                            a_K_892_minus1_m1 * hm1K892
-                            +a_K_892_zero_m1 * h0K892
-                            +a_K_892_plus1_m1 * hp1K892
+                            //a_K_892_minus1_m1 * hm1K892
+                            //+a_K_892_zero_m1 * h0K892
+                            //+a_K_892_plus1_m1 * hp1K892
                             
-                            +a_Z4430_minus1_m1 * hm1Z4430
-                            +a_Z4430_zero_m1 * h0Z4430
-                            +a_Z4430_plus1_m1 * hp1Z4430
+                            //+a_Z4430_minus1_m1 * hm1Z4430
+                            a_Z4430_zero_m1 //* h0Z4430
+                            //+a_Z4430_plus1_m1 * hp1Z4430
                             
                             //+a_K_1410_minus1_m1 * hm1K1410
                             //+a_K_1410_zero_m1 * h0K1410
@@ -947,13 +972,13 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
     
     double val_p1 = pow(abs(
                             
-                            a_K_892_minus1_p1 * hm1K892
-                            +a_K_892_zero_p1 * h0K892
-                            +a_K_892_plus1_p1 * hp1K892
+                            //a_K_892_minus1_p1 * hm1K892
+                            //+a_K_892_zero_p1 * h0K892
+                            //+a_K_892_plus1_p1 * hp1K892
                             
-                            +a_Z4430_minus1_p1 * hm1Z4430
-                            +a_Z4430_zero_p1 * h0Z4430
-                            +a_Z4430_plus1_p1 * hp1Z4430
+                            //+a_Z4430_minus1_p1 * hm1Z4430
+                            a_Z4430_zero_p1 //* h0Z4430
+                            //+a_Z4430_plus1_p1 * hp1Z4430
                             
                             //+a_K_1410_minus1_p1 * hm1K1410
                             //+a_K_1410_zero_p1 * h0K1410
@@ -1089,7 +1114,7 @@ double RooMyPdf::get_signal_density (double mKPicalc, double mJpsiPicalc, double
     //    return temp_m1;
     
     //cout << "PHSP : " << PHSP(mKPicalc) << endl;
-    return (val_m1+val_p1) * PHSP(mKPicalc) ;
+    return (val_m1+val_p1); //* PHSP(mKPicalc) ;
     //      return ( pow(abs(a_K2_1430),2) ) * PHSP(mKPicalc);
     //      return (k2_1430_m1 + k2_1430_p1) * PHSP(mKPicalc);
     
