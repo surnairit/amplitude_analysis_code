@@ -351,7 +351,7 @@ double RooMyPdf::alpha(double theta, double phi, double m2kpi, double m2jpsipi) 
 double RooMyPdf::costhetatilde(double theta, double phi, double m2kpi, double m2jpsipi) const
 {
     // K momentum in B0 frame
-    double pk_B0 = dec2mm(B0_mass,sqrt(m2jpsipi),kaonCh_mass);
+    double pk_B0 = dec2mm(mB,sqrt(m2jpsipi),mK);
     TLorentzVector K_B0;
     K_B0.SetPxPyPzE(0.0,0.0,pk_B0,sqrt(m2K+pk_B0*pk_B0));
     
@@ -369,7 +369,7 @@ double RooMyPdf::costhetatilde(double theta, double phi, double m2kpi, double m2
     TLorentzVector K_Zc;
     K_Zc.SetPxPyPzE(pk*sin(thetaz),0.0,pk*cos(thetaz),Ek);
     
-    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,pionCh_mass);
+    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,mPi);
     
     double Epi = sqrt(m2Pi+ppi*ppi);
     TLorentzVector Pi_Zc;
@@ -461,7 +461,7 @@ double RooMyPdf::costhetatilde(double theta, double phi, double m2kpi, double m2
 double RooMyPdf::phitilde(double theta, double phi, double m2kpi, double m2jpsipi) const
 {
     // K momentum in B0 frame
-    double pk_B0 = dec2mm(B0_mass,sqrt(m2jpsipi),kaonCh_mass);
+    double pk_B0 = dec2mm(mB,sqrt(m2jpsipi),mK);
     TLorentzVector K_B0;
     K_B0.SetPxPyPzE(0.0,0.0,pk_B0,sqrt(m2K+pk_B0*pk_B0));
     
@@ -479,7 +479,7 @@ double RooMyPdf::phitilde(double theta, double phi, double m2kpi, double m2jpsip
     TLorentzVector K_Zc;
     K_Zc.SetPxPyPzE(pk*sin(thetaz),0.0,pk*cos(thetaz),Ek);
     
-    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,pionCh_mass); // jpsi mass var name diff in Gen jp_mass
+    double ppi = dec2mm(sqrt(m2jpsipi),mJpsi,mPi); // jpsi mass var name diff in Gen jp_mass
     
     double Epi = sqrt(m2Pi+ppi*ppi);
     TLorentzVector Pi_Zc;
